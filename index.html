@@ -16,7 +16,7 @@
 <body>
 <div id="alertOverlay" onclick="closeAlert()">
   <div id="alertBar" onclick="event.stopPropagation()">
-    <div class="alert-title"><span class="alert-icon">📅</span><span id="alertTitle">تنبيه أقساط</span></div>
+    <div class="alert-title"><span class="alert-icon"></span><span id="alertTitle">تنبيه أقساط</span></div>
     <div class="alert-body" id="alertBody"></div>
     <div class="alert-line" id="alertLine"></div>
   </div>
@@ -30,7 +30,7 @@
 <!-- ========== شاشة تسجيل الدخول ========== -->
 <div id="authOverlay" style="display:none">
   <div class="login-card">
-    <div class="logo-mark"><img src="LOGO.PNG" style="width:38px;height:38px;border-radius:10px"></div>
+    <img src="LOGO.PNG" style="display:block;margin:0 auto 20px;width:80px;height:80px;border-radius:16px">
     <h2 style="margin-bottom:20px">تسجيل الدخول</h2>
     <input type="email" id="emailInput" class="inp" style="margin-bottom:10px" placeholder="البريد الإلكتروني"
       onkeydown="if(event.key==='Enter')document.getElementById('passInput').focus()"/>
@@ -93,7 +93,7 @@
     </div>
     <div class="tabs-spacer"></div>
     <div class="search-wrap">
-      <span class="search-icon"><i class="fa-solid fa-magnifying-glass"></i></span>
+      <span class="search-icon"><i class="fa-solid fa-magnifying-glass" style="color:#B8860B"></i></span>
       <input class="search-input" id="searchInput" placeholder="بحث بالاسم أو الجهاز..." oninput="onSearch(this.value)"/>
       <button class="search-clear" id="searchClear" onclick="clearSearch()" style="display:none">✕</button>
     </div>
@@ -142,50 +142,59 @@
     </div>
   </div>
   <div class="sidebar-section-title" onclick="toggleSection('sec1')" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;">
-    <span>📊 الرئيسية</span><span id="arr-sec1">›</span>
+    <span><i class="fa-solid fa-house" style="margin-left:6px"></i>الرئيسية</span><span id="arr-sec1"><i class="fa-solid fa-chevron-left"></i></span>
   </div>
   <div class="sidebar-menu" id="sec1" style="display:none">
-    <button class="sidebar-item" onclick="closeSidebar(); showToast('لوحة التحكم — قريباً', 'info')"><span class="item-icon">📊</span><span class="item-label">لوحة التحكم</span></button>
-    <button class="sidebar-item" onclick="closeSidebar(); openAddPerson()"><span class="item-icon">👤</span><span class="item-label">إضافة شخص</span><span class="item-badge">+</span></button>
-    <button class="sidebar-item" onclick="closeSidebar(); showToast('المفضلة — قريباً', 'info')"><span class="item-icon">⭐</span><span class="item-label">المفضلة</span></button>
+    <button class="sidebar-item" onclick="closeSidebar(); showToast('لوحة التحكم — قريباً', 'info')"><span class="item-icon"><i class="fa-solid fa-chart-pie"></i></span><span class="item-label">لوحة التحكم</span></button>
+    <button class="sidebar-item" onclick="closeSidebar(); openAddPerson()"><span class="item-icon"><i class="fa-solid fa-user-plus"></i></span><span class="item-label">إضافة شخص</span><span class="item-badge">+</span></button>
+    <button class="sidebar-item" onclick="closeSidebar(); showToast('المفضلة — قريباً', 'info')"><span class="item-icon"><i class="fa-solid fa-star" style="color:#FFD700"></i></span><span class="item-label">المفضلة</span></button>
   </div>
   <div class="sidebar-divider"></div>
   <div class="sidebar-section-title" onclick="toggleSection('sec2')" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;">
-    <span>💾 البيانات</span><span id="arr-sec2">›</span>
+    <span><i class="fa-solid fa-folder-tree" style="margin-left:6px"></i>البيانات</span><span id="arr-sec2"><i class="fa-solid fa-chevron-left"></i></span>
   </div>
   <div class="sidebar-menu" id="sec2" style="display:none">
-    <button class="sidebar-item" onclick="closeSidebar(); exportData()"><span class="item-icon">📤</span><span class="item-label">تصدير البيانات</span></button>
-    <button class="sidebar-item" onclick="closeSidebar(); importData()"><span class="item-icon">📥</span><span class="item-label">استيراد البيانات</span></button>
-    <button class="sidebar-item" onclick="closeSidebar(); openArchive()"><span class="item-icon">📁</span><span class="item-label">الأرشيف</span></button>
-    <button class="sidebar-item" onclick="closeSidebar(); showToast('النسخ الاحتياطي — قريباً', 'info')"><span class="item-icon">☁️</span><span class="item-label">نسخ احتياطي</span><span class="item-badge">جديد</span></button>
+    <button class="sidebar-item" onclick="closeSidebar(); exportData()"><span class="item-icon"><i class="fa-solid fa-file-export"></i></span><span class="item-label">تصدير البيانات</span></button>
+    <button class="sidebar-item" onclick="closeSidebar(); importData()"><span class="item-icon"><i class="fa-solid fa-file-import"></i></span><span class="item-label">استيراد البيانات</span></button>
+    <button class="sidebar-item" onclick="closeSidebar(); openArchive()"><span class="item-icon"><i class="fa-solid fa-box-archive"></i></span><span class="item-label">الأرشيف</span></button>
+    <button class="sidebar-item" onclick="closeSidebar(); showToast('النسخ الاحتياطي — قريباً', 'info')"><span class="item-icon">️<i class="fa-solid fa-cloud-arrow-up"></i></span><span class="item-label">نسخ احتياطي</span><span class="item-badge">جديد</span></button>
   </div>
   <div class="sidebar-divider"></div>
   <div class="sidebar-section-title" onclick="toggleSection('sec3')" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;">
-    <span>⚙️ الإعدادات</span><span id="arr-sec3">›</span>
+    <span><i class="fa-solid fa-sliders" style="margin-left:6px"></i>الإعدادات</span><span id="arr-sec3"><i class="fa-solid fa-chevron-left"></i></span>
   </div>
   <div class="sidebar-menu" id="sec3" style="display:none">
-    <button class="sidebar-item" id="btnDarkMode" onclick="toggleDarkMode()"><span class="item-icon">🌙</span><span class="item-label" id="darkModeLabel">الوضع الليلي</span></button>
-    <button class="sidebar-item" onclick="changeLanguage()"><span class="item-icon">🌐</span><span class="item-label">تغيير اللغة</span></button>
-    <button class="sidebar-item" onclick="openSettings()"><span class="item-icon">🔔</span><span class="item-label">الإشعارات</span></button>
-    <button class="sidebar-item" onclick="closeSidebar(); showToast('الخصوصية — قريباً', 'info')"><span class="item-icon">🔒</span><span class="item-label">الخصوصية والأمان</span></button>
+    <button class="sidebar-item" id="btnDarkMode" onclick="toggleDarkMode()"><span class="item-icon"><i class="fa-solid fa-moon"></i></span><span class="item-label" id="darkModeLabel">الوضع الليلي</span></button>
+    <button class="sidebar-item" onclick="changeLanguage()"><span class="item-icon"><i class="fa-solid fa-earth-americas"></i></span><span class="item-label">تغيير اللغة</span></button>
+    <button class="sidebar-item" onclick="openSettings()"><span class="item-icon"><i class="fa-solid fa-bell"></i></span><span class="item-label">الإشعارات</span></button>
+    <button class="sidebar-item" onclick="closeSidebar(); showToast('الخصوصية — قريباً', 'info')"><span class="item-icon"><i class="fa-solid fa-fingerprint"></i></span><span class="item-label">الخصوصية والأمان</span></button>
   </div>
   <div class="sidebar-divider"></div>
   <div class="sidebar-section-title" onclick="toggleSection('sec4')" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;">
-    <span>ℹ️ المساعدة</span><span id="arr-sec4">›</span>
+    <span><i class="fa-solid fa-circle-question" style="margin-left:6px"></i>المساعدة</span><span id="arr-sec4"><i class="fa-solid fa-chevron-left"></i></span>
   </div>
   <div class="sidebar-menu" id="sec4" style="display:none">
-    <button class="sidebar-item" onclick="openAbout()"><span class="item-icon">ℹ️</span><span class="item-label">حول التطبيق</span></button>
-    <button class="sidebar-item" onclick="closeSidebar(); showToast('المساعدة — قريباً', 'info')"><span class="item-icon">❓</span><span class="item-label">المساعدة والدعم</span></button>
-    <button class="sidebar-item" onclick="closeSidebar(); showToast('سياسة الخصوصية — قريباً', 'info')"><span class="item-icon">📝</span><span class="item-label">سياسة الخصوصية</span></button>
+    <button class="sidebar-item" onclick="openAbout()"><span class="item-icon"><i class="fa-solid fa-mobile-screen-button"></i></span><span class="item-label">حول التطبيق</span></button>
+    <button class="sidebar-item" onclick="closeSidebar(); showToast('المساعدة — قريباً', 'info')"><span class="item-icon"><i class="fa-solid fa-headset"></i></span><span class="item-label">المساعدة والدعم</span></button>
+    <button class="sidebar-item" onclick="closeSidebar(); showToast('سياسة الخصوصية — قريباً', 'info')"><span class="item-icon"><i class="fa-solid fa-file-contract"></i></span><span class="item-label">سياسة الخصوصية</span></button>
   </div>
   <div class="sidebar-footer">
-    <button class="sidebar-quick-btn" id="quickDark" onclick="toggleDarkMode()" title="الوضع الليلي">🌙</button>
-    <button class="sidebar-quick-btn" onclick="closeSidebar(); openAddPerson()" title="إضافة شخص">👤</button>
-    <button class="sidebar-quick-btn" onclick="closeSidebar(); exportData()" title="تصدير">📤</button>
-    <button class="sidebar-quick-btn danger-btn" onclick="closeSidebar(); logout()" title="تسجيل الخروج">🚪</button>
+    <button class="sidebar-quick-btn" id="quickDark" onclick="toggleDarkMode()" title="الوضع الليلي"><i class="fa-solid fa-moon"></i></button>
+    <button class="sidebar-quick-btn" onclick="closeSidebar(); openAddPerson()" title="إضافة شخص"><i class="fa-solid fa-user-plus"></i></button>
+    <button class="sidebar-quick-btn" onclick="closeSidebar(); exportData()" title="تصدير"><i class="fa-solid fa-file-export"></i></button>
+    <button class="sidebar-quick-btn danger-btn" onclick="closeSidebar(); logout()" title="تسجيل الخروج"><i class="fa-solid fa-right-from-bracket"></i></button>
   </div>
 </div>
-
+<!-- ========== الأرشيف ========== -->
+<div class="modal-overlay" id="modalArchive">
+  <div class="modal-box" style="max-width:600px">
+    <div class="modal-head">
+      <span class="modal-title">📁 الأرشيف</span>
+      <button class="modal-close" onclick="closeModal('modalArchive')">×</button>
+    </div>
+    <div id="archiveList"></div>
+  </div>
+</div>
 <!-- ========== مودال إضافة شخص ========== -->
 <div class="modal-overlay" id="modalPerson">
   <div class="modal-box" style="max-width:400px">
@@ -379,13 +388,16 @@ function updateUserUI(user) {
 
 window._syncData = function() {
   if(!currentUser || isSaving) return;
+  if(!persons || persons.length === 0) return;
   clearTimeout(saveTimer);
   saveTimer = setTimeout(async () => {
-    if(isSaving) return;
+    if(isSaving || !persons || persons.length === 0) return;
     isSaving = true;
     try {
       const cleanData = JSON.parse(JSON.stringify(persons));
-      if(new Blob([JSON.stringify(cleanData)]).size > 800000) showToast('⚠️ حجم البيانات كبير جداً', 'error');
+      if(cleanData.length === 0) return;
+      const dataSize = new Blob([JSON.stringify(cleanData)]).size;
+      if(dataSize > 800000) showToast('⚠️ حجم البيانات كبير جداً', 'error');
       await setDoc(doc(db, "users_data", currentUser.uid), { my_list: cleanData });
     } catch(e) { console.error("❌ خطأ:", e); } 
     finally { isSaving = false; }

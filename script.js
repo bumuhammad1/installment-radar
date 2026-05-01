@@ -251,10 +251,12 @@ function openArchive() {
       <i class="fa-solid fa-box-open"></i> استعادة
     </button>
   </div>`).join('');
-  document.getElementById('archiveList').innerHTML = html;
+    const archiveList = document.getElementById('archiveList');
+  if(archiveList) {
+    archiveList.innerHTML = html;
+  }
   openModal('modalArchive');
 }
-
 function togglePerson(pid) {
   const el = document.getElementById(`content_${pid}`);
   const isCurrentlyOpen = el.style.display !== 'none';
@@ -934,8 +936,25 @@ function toggleSection(id) {
   const el = document.getElementById(id);
   const arr = document.getElementById('arr-' + id);
   const isOpen = el.style.display !== 'none';
-  el.style.display = isOpen ? 'none' : 'flex';
-  arr.textContent = isOpen ? '›' : '▼';
+  
+  // إغلاق كل الأقسام
+  document.querySelectorAll('.sidebar-menu').forEach(menu => {
+    menu.style.display = 'none';
+  });
+  
+  // إعادة كل الأسهم لوضعها الأصلي
+  document.querySelectorAll('[id^="arr-"] i').forEach(icon => {
+    icon.style.transform = 'rotate(0deg)';
+  });
+  
+  // فتح القسم المطلوب
+  if (!isOpen) {
+    el.style.display = 'flex';
+    if(arr) {
+      const icon = arr.querySelector('i');
+      if(icon) icon.style.transform = 'rotate(90deg)';
+    }
+  }
 }
 
 function openSettings() {

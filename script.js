@@ -1416,7 +1416,120 @@ function showFavoritesFilter(type, btn) {
     });
   }, 100);
 }
+// ========== النسخ الاحتياطي ==========
+async function createBackup() {
+  const _u = window._getUser?.();
+  if(!_u) {
+    showToast('سجل دخول أولاً', 'error');
+    return;
+  }
+  if(!persons || persons.length === 0) {
+    showToast('لا توجد بيانات للنسخ', 'error');
+    return;
+  }
+  
+  const backup = {
+    date: new Date().toISOString(),
+    data: JSON.parse(JSON.stringify(persons))
+  };
+  
+  try {
+    // نجيب النسخ القديمة أولاً
+    const snap = await window._getDoc(window._doc(window._db, "users_data", _u.uid));
+    const oldBackups = (snap.exists() && snap.data().backups) ? snap.data().backups : [];
+    
+    // نضيف النسخة الجديدة
+    oldBackups.push(backup);
+    
+    // نحفظ مع البيانات الأساسية
+    await window._setDoc(
+      window._doc(window._db, "users_data", _u.uid),
+      { my_list: persons, backups: oldBackups }
+    );
+    showToast('<i class="fa-solid fa-cloud-arrow-up"></i> تم حفظ النسخة الاحتياطية', 'success');
+  } catch(e) {
+    console.error(e);
+    showToast('فشل النسخ الاحتياطي', 'error');
+  }
+}
+async function restoreBackup() {
+  const _u = window._getUser?.();
+  if(!_u) {
+    showToast('سجل دخول أولاً', 'error');
+    return;
+  }
+  
+  try {
+    const snap = await window._getDoc(window._doc(window._db, "users_data", _u.uid));
+    const backups = (snap.exists() && snap.data().backups) ? snap.data().backups : [];
+    
+    if(backups.length > 0) {
+      const reversed = [...backups].reverse();
+      
+      let html = '<div style="max-height:400px;overflow-y:auto">';
+      html += '<div style="font-weight:800;margin-bottom:12px;font-size:14px"><i class="fa-solid fa-clock-rotate-left" style="margin-left:6px"></i>النسخ الاحتياطية (' + backups.length + ')</div>';
+      
+      reversed.forEach((b, i) => {
+        const d = new Date(b.date);
+        const dateStr = d.toLocaleDateString('ar-SA', { year:'numeric', month:'short', day:'numeric' });
+        const timeStr = d.toLocaleTimeString('ar-SA', { hour:'2-digit', minute:'2-digit' });
+        const dealsCount = b.data?.reduce((s,p) => s + (p.deals||[]).length, 0) || 0;
+        
+        html += `
+          <div style="background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center">
+            <div>
+              <div style="font-weight:700;font-size:13px">${dateStr}</div>
+              <div style="font-size:11px;color:var(--muted)">${timeStr} · ${dealsCount} صفقات · ${b.data?.length || 0} أشخاص</div>
+            </div>
+            <button class="btn btn-sm" style="background:var(--blue-l);border:1px solid var(--blue-b);color:var(--blue);padding:6px 12px;font-size:11px" onclick="restoreSpecificBackup(${i})"><i class="fa-solid fa-rotate-left" style="margin-left:4px"></i>استعادة</button>
+          </div>`;
+      });
+      
+      html += '</div>';
+      
+      const modal = document.getElementById('modalBackup') || createBackupModal();
+      document.getElementById('backupContent').innerHTML = html;
+      openModal('modalBackup');
+      
+      window._tempBackups = reversed;
+      
+    } else {
+      showToast('لا توجد نسخ احتياطية', 'error');
+    }
+  } catch(e) {
+    console.error(e);
+    showToast('فشل تحميل النسخ', 'error');
+  }
+}
 
+function restoreSpecificBackup(index) {
+  showConfirm('استعادة هذه النسخة؟', 'سيتم استبدال بياناتك الحالية', () => {
+    const backup = window._tempBackups[index];
+    if(backup && backup.data) {
+      persons = backup.data;
+      render();
+      closeModal('modalBackup');
+      showToast('<i class="fa-solid fa-cloud-arrow-down"></i> تم استعادة النسخة', 'success');
+      if(window._syncData) window._syncData();
+    }
+  });
+}
+
+function createBackupModal() {
+  const div = document.createElement('div');
+  div.className = 'modal-overlay';
+  div.id = 'modalBackup';
+  div.innerHTML = `
+    <div class="modal-box" style="max-width:500px">
+      <div class="modal-head">
+        <span class="modal-title"><i class="fa-solid fa-clock-rotate-left" style="margin-left:6px"></i>استعادة نسخة احتياطية</span>
+        <button class="modal-close" onclick="closeModal('modalBackup')"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div id="backupContent"></div>
+    </div>`;
+  document.body.appendChild(div);
+  return div;
+}
 // ========== عرض أولي ==========
 render();
 

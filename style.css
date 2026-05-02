@@ -1086,9 +1086,26 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);dir
 
 .modal-title{font-size:16px;font-weight:800}
 
-.modal-close{background:var(--panel);border:1px solid var(--border);color:var(--sub);width:28px;height:28px;border-radius:8px;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;transition:all .15s}
-
-.modal-close:hover{border-color:var(--border2);color:var(--text)}
+.modal-close{
+  background: rgba(139,0,0,0.08);
+  border: 1px solid rgba(184,134,11,0.3);
+  color: #8B0000;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+.modal-close:hover{
+  background: rgba(139,0,0,0.15);
+  border-color: rgba(184,134,11,0.6);
+  color: #b40000;
+  transform: rotate(90deg);
+}
 
 
 
@@ -1565,4 +1582,10 @@ body.dark-mode .pmt-item {
 body.dark-mode .search-input {
   background: rgba(184,134,11,0.05) !important;
   border-color: rgba(184,134,11,0.3) !important;
+}
+#pv_sadaqa {
+  color: #B8860B !important;
+}
+body.dark-mode #pv_sadaqa {
+  color: #DAA520 !important;
 }

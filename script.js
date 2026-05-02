@@ -754,7 +754,7 @@ const archiveBtn = isFullyDone(deal) && !deal.archived
 
   return `
 <div class="deal-card${isLate ? ' is-late' : done ? ' is-done' : ''}">
-  ${isLate ? `<div class="deal-late-bar">⚠ متأخر منذ <span class="num">${fmtNum(late)}</span> يوم — المتبقي: <span class="num">${fmtMoney(rem)}</span></div>` : ''}
+  ${isLate ? `<div class="deal-late-bar"><i class="fa-solid fa-clock" style="margin-left:4px"></i>متأخر منذ <span class="num">${fmtNum(late)}</span> يوم — المتبقي: <span class="num">${fmtMoney(rem)}</span></div>` : ''}
   <div class="deal-row" onclick="toggleDeal('${uid}')">
     <div class="deal-dot" style="background:${color}"></div>
     <div class="deal-info">
@@ -771,7 +771,7 @@ const archiveBtn = isFullyDone(deal) && !deal.archived
     <div class="deal-right">
       ${statusBadge}
       ${!done ? `<div class="deal-rem" style="color:${isLate ? 'var(--red)' : 'var(--amber)'}">${fmtMoney(rem)}</div>` : ''}
-      <div class="deal-chev${isOpen ? ' open' : ''}" id="chev_${uid}">▼</div>
+      <div class="deal-chev${isOpen ? ' open' : ''}" id="chev_${uid}"><i class="fa-solid fa-chevron-down"></i></div>
     </div>
   </div>
   <div class="deal-detail${isOpen ? ' open' : ''}" id="det_${uid}">
@@ -781,7 +781,7 @@ const archiveBtn = isFullyDone(deal) && !deal.archived
     <div class="pmts-section">
       <div class="pmts-head">
         <span class="pmts-title">سجل الدفعات (<span class="num">${(deal.payments||[]).length}</span>)</span>
-        ${!done ? `<span class="pmts-rem" style="color:${isLate ? 'var(--red)' : 'var(--amber)'}">المتبقي: ${fmtMoney(rem)}</span>` : `<span class="pmts-rem" style="color:var(--green)">✓ مكتمل بالكامل</span>`}
+        ${!done ? `<span class="pmts-rem" style="color:${isLate ? 'var(--red)' : 'var(--amber)'}"><i class="fa-solid fa-coins" style="margin-left:4px"></i>المتبقي: ${fmtMoney(rem)}</span>` : `<span class="pmts-rem" style="color:var(--green)"><i class="fa-solid fa-circle-check" style="margin-left:4px"></i>مكتمل بالكامل</span>`}
       </div>
       ${pmtsHtml}
     </div>
@@ -791,7 +791,7 @@ const archiveBtn = isFullyDone(deal) && !deal.archived
   ${whatsappBtn}
         <button class="btn btn-ghost btn-sm" onclick="openEditDeal('${pid}','${uid}')"><i class="fa-regular fa-pen-to-square"></i> تعديل</button>
         <button class="btn btn-danger btn-sm" style="background:rgba(225,29,72,0.05);border:1px solid rgba(225,29,72,0.2)!important;color:#e11d48;font-size:11px;display:flex;align-items:center;gap:5px;" onclick="deleteDeal('${pid}','${uid}')">
-          <i class="fa-solid fa-trash"></i><span>حذف الصفقة</span>
+          <i class="fa-solid fa-trash-can" style="margin-left:4px"></i><span>حذف الصفقة</span>
         </button>
       </div>
       ${archiveBtn}
@@ -1020,23 +1020,281 @@ function importData() {
     ['d_from_y','d_to_y'].forEach(id=>{const el=document.getElementById(id);if(el)el.add(new Option(y,y));});
   }
 })();
+// ========== لوحة التحكم ==========
+function openDashboard() {
+  const totalDeals = persons.reduce((s,p) => s + (p.deals||[]).length, 0);
+  const totalAmount = persons.reduce((s,p) => s + (p.deals||[]).reduce((ds,d) => ds + dTotal(d), 0), 0);
+  const totalPaid = persons.reduce((s,p) => s + (p.deals||[]).reduce((ds,d) => ds + dPaid(d), 0), 0);
+  const totalProfit = persons.reduce((s,p) => s + (p.deals||[]).reduce((ds,d) => ds + (dTotal(d) - (Number(d.devicePrice||0) * Number(d.deviceCount||1))), 0), 0);
+  const totalSadaqa = totalProfit * 0.01;
+  const remaining = totalAmount - totalPaid;
+  const lateDeals = persons.reduce((s,p) => s + (p.deals||[]).filter(d => daysLate(d) > 0).length, 0);
+  
+  const html = `
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px">
+      <div style="background:var(--panel);border-radius:12px;padding:14px;text-align:center;border:1px solid var(--border)">
+        <div style="font-size:11px;color:var(--muted)">الصفقات</div>
+        <div style="font-size:22px;font-weight:900;color:#B8860B">${totalDeals}</div>
+      </div>
+      <div style="background:var(--panel);border-radius:12px;padding:14px;text-align:center;border:1px solid var(--border)">
+        <div style="font-size:11px;color:var(--muted)">الإجمالي</div>
+        <div style="font-size:18px;font-weight:900;color:var(--blue)">${fmtMoney(totalAmount)}</div>
+      </div>
+      <div style="background:var(--panel);border-radius:12px;padding:14px;text-align:center;border:1px solid var(--border)">
+        <div style="font-size:11px;color:var(--muted)">المدفوع</div>
+        <div style="font-size:18px;font-weight:900;color:#2d5a27">${fmtMoney(totalPaid)}</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px">
+      <div style="background:var(--panel);border-radius:12px;padding:14px;text-align:center;border:1px solid var(--border)">
+        <div style="font-size:11px;color:var(--muted)">المتبقي</div>
+        <div style="font-size:18px;font-weight:900;color:#D97706">${fmtMoney(remaining)}</div>
+      </div>
+      <div style="background:var(--panel);border-radius:12px;padding:14px;text-align:center;border:1px solid var(--border)">
+        <div style="font-size:11px;color:var(--muted)">الأرباح</div>
+        <div style="font-size:18px;font-weight:900;color:#7C3AED">${fmtMoney(totalProfit)}</div>
+      </div>
+      <div style="background:var(--panel);border-radius:12px;padding:14px;text-align:center;border:1px solid var(--border)">
+        <div style="font-size:10px;color:var(--muted);cursor:pointer" onclick="openSadaqaDetails()"><i class="fa-solid fa-hand-holding-heart" style="margin-left:3px"></i>الصدقة (1%) <i class="fa-solid fa-arrow-left" style="font-size:9px"></i></div>
+        <div style="font-size:18px;font-weight:900;color:#B8860B">${fmtMoney(totalSadaqa)}</div>
+      </div>
+    </div>
+    ${lateDeals > 0 ? `
+    <div style="background:var(--red-l);border-radius:12px;padding:12px;text-align:center;border:1px solid var(--red-b);color:var(--red);font-weight:700">
+      <i class="fa-solid fa-triangle-exclamation" style="margin-left:4px"></i> يوجد ${lateDeals} صفقات متأخرة
+    </div>` : ''}
+  `;
+  
+  document.getElementById('dashboardContent').innerHTML = html;
+  openModal('modalDashboard');
+}
+// ========== تفاصيل الصدقة ==========
+function openSadaqaDetails() {
+  closeModal('modalDashboard');
+  
+  let totalSadaqa = 0;
+  let totalPaid = 0;
+  let dealsList = '';
+  
+  // نجمع كل المدفوعات العامة
+  let allPayments = [];
+  persons.forEach(p => {
+    (p.deals||[]).forEach(d => {
+      (d.sadaqaPayments||[]).forEach(pmt => {
+        allPayments.push({
+          amount: pmt.amount,
+          date: pmt.date,
+          note: pmt.note,
+          person: p.name,
+          deal: d.deviceName || 'بدون اسم'
+        });
+      });
+    });
+  });
+  totalPaid = allPayments.reduce((s,pmt) => s + pmt.amount, 0);
+  
+  // لكل صفقة، نحسب الصدقة المستحقة والمتبقي
+  persons.forEach(p => {
+    (p.deals||[]).forEach(d => {
+      const profit = dTotal(d) - (Number(d.devicePrice||0) * Number(d.deviceCount||1));
+      const sadaqa = profit * 0.01;
+      totalSadaqa += sadaqa;
+      
+      // المدفوع لهذه الصفقة
+      const paidForDeal = allPayments
+        .filter(pmt => pmt.person === p.name && pmt.deal === (d.deviceName || 'بدون اسم'))
+        .reduce((s,pmt) => s + pmt.amount, 0);
+      
+      const rem = sadaqa - paidForDeal;
+      
+      dealsList += `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
+          <div>
+            <div style="font-weight:700;font-size:13px">${d.deviceName || 'بدون اسم'}</div>
+            <div style="font-size:10px;color:var(--muted)">${p.name}</div>
+          </div>
+          <div style="text-align:left">
+            ${rem > 0 ? `<span style="font-size:13px;font-weight:800;color:#8B0000">${fmtMoney(rem)}</span>` : `<span style="font-size:11px;color:#2d5a27"><i class="fa-solid fa-circle-check"></i> مكتملة</span>`}
+            <div style="font-size:9px;color:var(--muted)">من ${fmtMoney(sadaqa)}</div>
+          </div>
+        </div>`;
+    });
+  });
+  
+  const remaining = totalSadaqa - totalPaid;
+  
+  let paymentsHtml = allPayments.length === 0
+    ? '<div style="text-align:center;color:var(--muted);padding:10px;font-size:12px">لا توجد مدفوعات بعد</div>'
+    : allPayments.map(pmt => `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;font-size:11px;border-bottom:1px solid var(--faint)">
+        <span style="color:var(--sub)">${fmtDate(pmt.date)} · ${pmt.deal} (${pmt.person})${pmt.note ? ' · ' + pmt.note : ''}</span>
+        <span style="color:#2d5a27;font-weight:700">${fmtMoney(pmt.amount)}</span>
+      </div>`).join('');
+  
+  const html = `
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px">
+      <div style="background:var(--panel);border-radius:12px;padding:12px;text-align:center;border:1px solid var(--border)">
+        <div style="font-size:10px;color:var(--muted)"><i class="fa-solid fa-hand-holding-heart" style="margin-left:3px"></i>إجمالي الصدقة</div>
+        <div style="font-size:16px;font-weight:900;color:#B8860B">${fmtMoney(totalSadaqa)}</div>
+      </div>
+      <div style="background:var(--panel);border-radius:12px;padding:12px;text-align:center;border:1px solid var(--border)">
+        <div style="font-size:10px;color:var(--muted)"><i class="fa-solid fa-circle-check" style="margin-left:3px;color:#2d5a27"></i>مدفوعة</div>
+        <div style="font-size:16px;font-weight:900;color:#2d5a27">${fmtMoney(totalPaid)}</div>
+      </div>
+      <div style="background:var(--panel);border-radius:12px;padding:12px;text-align:center;border:1px solid var(--border)">
+        <div style="font-size:10px;color:var(--muted)"><i class="fa-solid fa-circle-xmark" style="margin-left:3px;color:#8B0000"></i>متبقية</div>
+        <div style="font-size:16px;font-weight:900;color:#8B0000">${fmtMoney(remaining)}</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <input class="inp" type="number" id="sadaqaAmount" placeholder="المبلغ..." style="flex:1;padding:8px"/>
+      <input class="inp" id="sadaqaNote" placeholder="ملاحظة (اختياري)..." style="flex:2;padding:8px"/>
+      <button class="btn btn-sm" style="background:var(--amber-l);border:1px solid var(--amber-b);color:#B8860B;white-space:nowrap" onclick="paySadaqa()"><i class="fa-solid fa-hand-holding-heart" style="margin-left:4px"></i>دفع</button>
+    </div>
+    <details style="margin-bottom:12px" open>
+      <summary style="cursor:pointer;font-weight:700;font-size:13px;color:var(--sub);padding:8px 0"><i class="fa-solid fa-list-check" style="margin-left:4px"></i>المتبقي على كل صفقة</summary>
+      <div style="max-height:200px;overflow-y:auto;margin-top:8px">${dealsList || '<div style="text-align:center;color:var(--muted);padding:10px">لا توجد صفقات</div>'}</div>
+    </details>
+    <details style="margin-bottom:12px">
+      <summary style="cursor:pointer;font-weight:700;font-size:13px;color:var(--sub);padding:8px 0"><i class="fa-solid fa-receipt" style="margin-left:4px"></i>سجل المدفوعات</summary>
+      <div style="max-height:200px;overflow-y:auto;margin-top:8px">${paymentsHtml}</div>
+    </details>
+  `;
+  
+  document.getElementById('sadaqaContent').innerHTML = html;
+  openModal('modalSadaqa');
+}
+
+function markSadaqaPaid(did) {
+  const deal = findDealById(did);
+  if(deal) {
+    deal.sadaqaPaid = true;
+    showToast('<i class="fa-solid fa-circle-check" style="color:#2d5a27"></i> تم تسجيل دفع الصدقة', 'success');
+    openSadaqaDetails();
+    const _u = window._getUser?.();
+    if(_u && window._setDoc) {
+      const cleanData = JSON.parse(JSON.stringify(persons));
+      window._setDoc(window._doc(window._db, "users_data", _u.uid), { my_list: cleanData }).catch(()=>{});
+    }
+  }
+}
+function undoSadaqaPaid(did) {
+  const deal = findDealById(did);
+  if(deal) {
+    deal.sadaqaPaid = false;
+    showToast('<i class="fa-solid fa-rotate-left"></i> تم التراجع عن الدفع', 'info');
+    openSadaqaDetails();
+    const _u = window._getUser?.();
+    if(_u && window._setDoc) {
+      const cleanData = JSON.parse(JSON.stringify(persons));
+      window._setDoc(window._doc(window._db, "users_data", _u.uid), { my_list: cleanData }).catch(()=>{});
+    }
+  }
+}
+
+function paySadaqa() {
+  let amount = Number(document.getElementById('sadaqaAmount')?.value);
+  
+  if(!amount || amount <= 0) {
+    showToast('أدخل مبلغ صحيح', 'error');
+    return;
+  }
+  
+  // نجمع المدفوعات السابقة لكل صفقة
+  let allPayments = [];
+  persons.forEach(p => {
+    (p.deals||[]).forEach(d => {
+      (d.sadaqaPayments||[]).forEach(pmt => {
+        allPayments.push({
+          ...pmt,
+          person: p.name,
+          deal: d.deviceName || 'بدون اسم',
+          dealId: d.id
+        });
+      });
+    });
+  });
+  
+  // نحسب المتبقي الإجمالي
+  let totalSadaqa = 0;
+  persons.forEach(p => {
+    (p.deals||[]).forEach(d => {
+      const profit = dTotal(d) - (Number(d.devicePrice||0) * Number(d.deviceCount||1));
+      totalSadaqa += profit * 0.01;
+    });
+  });
+  
+  const totalPaid = allPayments.reduce((s,pmt) => s + pmt.amount, 0);
+  const remaining = totalSadaqa - totalPaid;
+  
+  if(amount > remaining + 0.01) {
+    showToast('المبلغ أكبر من المتبقي (' + fmtMoney(remaining) + ')', 'error');
+    return;
+  }
+  
+  // نوزع المبلغ على الصفقات بالترتيب
+  let remainingAmount = amount;
+  const note = document.getElementById('sadaqaNote')?.value?.trim() || '';
+  
+  for(let p of persons) {
+    for(let d of (p.deals||[])) {
+      if(remainingAmount <= 0) break;
+      
+      const profit = dTotal(d) - (Number(d.devicePrice||0) * Number(d.deviceCount||1));
+      const sadaqa = profit * 0.01;
+      
+      // المدفوع لهذه الصفقة
+      const paidForDeal = allPayments
+        .filter(pmt => pmt.dealId === d.id)
+        .reduce((s,pmt) => s + pmt.amount, 0);
+      
+      const remainingForDeal = sadaqa - paidForDeal;
+      
+      if(remainingForDeal > 0) {
+        const payAmount = Math.min(remainingAmount, remainingForDeal);
+        
+        d.sadaqaPayments = d.sadaqaPayments || [];
+        d.sadaqaPayments.push({
+          id: genId(),
+          date: new Date().toISOString().split('T')[0],
+          amount: payAmount,
+          note: note
+        });
+        
+        remainingAmount -= payAmount;
+      }
+    }
+    if(remainingAmount <= 0) break;
+  }
+  
+  document.getElementById('sadaqaAmount').value = '';
+  document.getElementById('sadaqaNote').value = '';
+  
+  showToast(`<i class="fa-solid fa-hand-holding-heart"></i> تم توزيع ${fmtMoney(amount)} على الصفقات`, 'success');
+  openSadaqaDetails();
+  
+  const _u = window._getUser?.();
+  if(_u && window._setDoc) {
+    const cleanData = JSON.parse(JSON.stringify(persons));
+    window._setDoc(window._doc(window._db, "users_data", _u.uid), { my_list: cleanData }).catch(()=>{});
+  }
+}
 
 // ========== عرض أولي ==========
 render();
 
 function toggleDarkMode() {
   const isDark = document.body.classList.toggle('dark-mode');
-  document.getElementById('darkModeLabel').textContent = isDark ? '☀️ الوضع الفاتح' : '🌙 الوضع الليلي';
+  document.getElementById('darkModeLabel').textContent = isDark ? 'الوضع الفاتح' : 'الوضع الليلي';
   const iconEl = document.getElementById('btnDarkMode').querySelector('.item-icon');
-  if(iconEl) iconEl.textContent = isDark ? '☀️' : '🌙';
+  if(iconEl) {
+    iconEl.innerHTML = isDark ? '<i class="fa-solid fa-sun"></i>' : '<i class="fa-solid fa-moon"></i>';
+  }
   const quickBtn = document.getElementById('quickDark');
-  if(quickBtn) quickBtn.textContent = isDark ? '☀️' : '🌙';
+  if(quickBtn) {
+    quickBtn.innerHTML = isDark ? '<i class="fa-solid fa-sun"></i>' : '<i class="fa-solid fa-moon"></i>';
+  }
   localStorage.setItem('darkMode', isDark);
-}
-
-if (localStorage.getItem('darkMode') === 'true') {
-  document.body.classList.add('dark-mode');
-  document.getElementById('darkModeLabel').textContent = '☀️ الوضع الفاتح';
 }
 // عرض البيانات
 
@@ -1052,7 +1310,7 @@ function showAlert(title, body) {
   
   if(!overlay || !bar) return;
   
-  titleEl.textContent = title || '📅 تنبيه أقساط';
+  titleEl.textContent = title || 'تنبيه أقساط';
   bodyEl.innerHTML = body || '';
   
   line.style.transition = 'none';
@@ -1112,7 +1370,7 @@ setTimeout(() => {
   });
   
   if(alerts.length > 0) {
-    showAlert('📅 تذكير بالأقساط', alerts.join('<br><br>'));
+    showAlert('تذكير بالأقساط', alerts.join('<br><br>'));
   }
 }, 2000);
 

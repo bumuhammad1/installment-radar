@@ -426,7 +426,7 @@ window._syncData = function() {
       await setDoc(doc(db, "users_data", currentUser.uid), { my_list: cleanData });
     } catch(e) { console.error("❌ خطأ:", e); } 
     finally { isSaving = false; }
-  }, 1200);
+  }, 300);
 };
 
 function hideLoading() { document.getElementById('loadingOverlay').style.display = 'none'; }

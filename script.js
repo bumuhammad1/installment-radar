@@ -186,6 +186,9 @@ function deletePerson(pid) {
     `سيتم حذف ${p.deals.length} صفقة نهائياً`,
     () => {
       persons = persons.filter(x=>x.id!==pid);
+      // ⬇️ أضف هالسطرين هنا بعد الحذف مباشرة
+      if (window._syncData) window._syncData();
+      // ⬆️
       showToast('تم حذف الشخص وصفقاته', 'error', 3000, '<i class="fa-solid fa-user-slash"></i>');
       render();
     }

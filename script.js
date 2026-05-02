@@ -37,7 +37,7 @@ function durationLabel(from, to) {
 
 // ========== حساب عدد الشهور بين تاريخين ==========
 function monthsBetween(from, to) {
-  if(!from||!to) return 12;
+  if(!from||!to) return 1;
   const a=new Date(from), b=new Date(to);
   return Math.max(1,(b.getFullYear()-a.getFullYear())*12+b.getMonth()-a.getMonth());
 }
@@ -60,6 +60,7 @@ function findDealById(id) {
 function daysLate(d) {
   if(!d.dateTo) return 0;
   if(isDone(d)) return 0;
+  if(d.dateFrom && new Date() < new Date(d.dateFrom)) return 0;
   const diff=Math.floor((new Date().setHours(0,0,0,0)-new Date(d.dateTo))/86400000);
   return diff>0?diff:0;
 }
@@ -167,7 +168,9 @@ function savePersonModal() {
     showToast('تم تعديل الاسم بنجاح', 'success', 3000, '<i class="fa-solid fa-user-pen"></i>');
   } else {
     persons.push({id:genId(), name, deals:[]});
-    showToast('تمت إضافة الشخص بنجاح', 'success', 3000, '<i class="fa-solid fa-user-plus"></i>');
+    showToast('تم حذف الشخص وصفقاته', 'error', 3000, '<i class="fa-solid fa-user-slash"></i>');
+render();
+if(window._syncData) window._syncData();
   }
   closeModal('modalPerson');
   render();
@@ -769,7 +772,8 @@ const archiveBtn = isFullyDone(deal) && !deal.archived
       </div>
     </div>
     <div class="deal-right">
-      ${statusBadge}
+  <button onclick="event.stopPropagation(); toggleDealFavorite('${uid}')" style="background:none;border:none;cursor:pointer;font-size:16px;padding:0;line-height:1" title="مفضلة">${deal.favorite ? '<i class="fa-solid fa-star" style="color:#FFD700"></i>' : '<i class="fa-regular fa-star" style="color:var(--muted)"></i>'}</button>
+  ${statusBadge}
       ${!done ? `<div class="deal-rem" style="color:${isLate ? 'var(--red)' : 'var(--amber)'}">${fmtMoney(rem)}</div>` : ''}
       <div class="deal-chev${isOpen ? ' open' : ''}" id="chev_${uid}"><i class="fa-solid fa-chevron-down"></i></div>
     </div>
@@ -837,9 +841,10 @@ function renderPersonBlock(p, ci) {
     </div>
 
     <div style="display:flex; gap:8px;">
-      <button onclick="event.stopPropagation(); openEditPerson('${p.id}')" style="border:none; background:none; cursor:pointer;"><i class="fa-regular fa-pen-to-square"></i></button>
-      <button onclick="event.stopPropagation(); deletePerson('${p.id}')" style="border:none; background:none; cursor:pointer; color:#e11d48;"><i class="fa-solid fa-trash"></i></button>
-    </div>
+  <button onclick="event.stopPropagation(); togglePersonFavorite('${p.id}')" style="border:none; background:none; cursor:pointer; font-size:18px" title="مفضلة">${p.favorite ? '<i class="fa-solid fa-star" style="color:#FFD700"></i>' : '<i class="fa-regular fa-star" style="color:var(--muted)"></i>'}</button>
+  <button onclick="event.stopPropagation(); openEditPerson('${p.id}')" style="border:none; background:none; cursor:pointer;"><i class="fa-regular fa-pen-to-square"></i></button>
+  <button onclick="event.stopPropagation(); deletePerson('${p.id}')" style="border:none; background:none; cursor:pointer; color:#e11d48;"><i class="fa-solid fa-trash"></i></button>
+</div>
   </div>
 
   <div id="content_${p.id}" style="display:none; padding:10px;">
@@ -868,7 +873,7 @@ function render() {
   const tabsBar        = document.getElementById('tabsBar');
   const sortBar        = document.getElementById('sortBar');
   const statsContainer = document.getElementById('statsContainer');
-
+updateFavCount();
   if(persons.length > 0) {
     tabsBar.style.display = 'block';
     statsBar.style.display= 'block';
@@ -1279,6 +1284,138 @@ function paySadaqa() {
     window._setDoc(window._doc(window._db, "users_data", _u.uid), { my_list: cleanData }).catch(()=>{});
   }
 }
+// ========== المفضلة ==========
+function toggleDealFavorite(did) {
+  const deal = findDealById(did);
+  if(deal) {
+    deal.favorite = !deal.favorite;
+    render();
+    showToast(deal.favorite ? '<i class="fa-solid fa-star" style="color:#FFD700"></i> أضيف للمفضلة' : '<i class="fa-regular fa-star"></i> أزيل من المفضلة', 'info');
+    const _u = window._getUser?.();
+    if(_u && window._setDoc) {
+      const cleanData = JSON.parse(JSON.stringify(persons));
+      window._setDoc(window._doc(window._db, "users_data", _u.uid), { my_list: cleanData }).catch(()=>{});
+    }
+  }
+}
+
+function togglePersonFavorite(pid) {
+  const p = persons.find(x => x.id === pid);
+  if(p) {
+    p.favorite = !p.favorite;
+    render();
+    showToast(p.favorite ? '<i class="fa-solid fa-star" style="color:#FFD700"></i> أضيف الشخص للمفضلة' : '<i class="fa-regular fa-star"></i> أزيل الشخص من المفضلة', 'info');
+    const _u = window._getUser?.();
+    if(_u && window._setDoc) {
+      const cleanData = JSON.parse(JSON.stringify(persons));
+      window._setDoc(window._doc(window._db, "users_data", _u.uid), { my_list: cleanData }).catch(()=>{});
+    }
+  }
+}
+
+function showFavorites() {
+  let filtered = [];
+  
+  persons.forEach(p => {
+    if(p.favorite && (p.deals||[]).length > 0) {
+      filtered.push({...p, deals: p.deals});
+    } else {
+      const favDeals = (p.deals||[]).filter(d => d.favorite);
+      if(favDeals.length > 0) {
+        filtered.push({...p, deals: favDeals});
+      }
+    }
+  });
+  
+  if(filtered.length === 0) {
+    showToast('لا توجد عناصر في المفضلة', 'info');
+    return;
+  }
+  
+  document.getElementById('personsList').innerHTML = 
+    '<div style="text-align:center;margin-bottom:16px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap">' +
+'<button class="btn btn-ghost btn-sm" onclick="render()"><i class="fa-solid fa-house" style="margin-left:4px"></i>الرئيسية</button>' +
+'<button class="btn btn-ghost btn-sm active" onclick="showFavoritesFilter(\'all\', this)"><i class="fa-solid fa-layer-group" style="margin-left:4px"></i>عرض الكل</button>' +
+'<button class="btn btn-ghost btn-sm" onclick="showFavoritesFilter(\'persons\', this)"><i class="fa-solid fa-user" style="margin-left:4px"></i>الأشخاص</button>' +
+'<button class="btn btn-ghost btn-sm" onclick="showFavoritesFilter(\'deals\', this)"><i class="fa-solid fa-file-contract" style="margin-left:4px"></i>الصفقات</button>' +
+'</div>' +
+    filtered.map(p => renderPersonBlock(p, persons.indexOf(p))).join('');
+  
+  document.getElementById('emptyState').style.display = 'none';
+  document.getElementById('noResults').style.display = 'none';
+  
+  setTimeout(() => {
+    filtered.forEach(p => {
+      const el = document.getElementById('content_' + p.id);
+      if(el) el.style.display = 'block';
+    });
+  }, 100);
+}
+
+function updateFavCount() {
+  let cnt = 0;
+  persons.forEach(p => {
+    if(p.favorite) cnt++;
+    (p.deals||[]).forEach(d => {
+      if(d.favorite) cnt++;
+    });
+  });
+  const el = document.getElementById('cnt-fav');
+  if(el) el.textContent = cnt;
+}
+function showFavoritesFilter(type, btn) {
+  // تحديث الأزرار النشطة
+  document.querySelectorAll('.sidebar-menu .btn-ghost').forEach(b => b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  
+  let filtered = [];
+  
+  persons.forEach(p => {
+    if(type === 'persons') {
+      if(p.favorite && (p.deals||[]).length > 0) {
+        filtered.push({...p, deals: p.deals});
+      }
+    } else if(type === 'deals') {
+      const favDeals = (p.deals||[]).filter(d => d.favorite);
+      if(favDeals.length > 0) {
+        filtered.push({...p, deals: favDeals});
+      }
+    } else {
+      if(p.favorite && (p.deals||[]).length > 0) {
+        filtered.push({...p, deals: p.deals});
+      } else {
+        const favDeals = (p.deals||[]).filter(d => d.favorite);
+        if(favDeals.length > 0) {
+          filtered.push({...p, deals: favDeals});
+        }
+      }
+    }
+  });
+  
+  if(filtered.length === 0) {
+    showToast('لا توجد عناصر', 'info');
+    return;
+  }
+  
+  document.getElementById('personsList').innerHTML = 
+    '<div style="text-align:center;margin-bottom:16px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap">' +
+    '<button class="btn btn-ghost btn-sm" onclick="render()"><i class="fa-solid fa-house" style="margin-left:4px"></i>الرئيسية</button>' +
+    '<button class="btn btn-ghost btn-sm' + (type==='all'?' active':'') + '" onclick="showFavoritesFilter(\'all\', this)"><i class="fa-solid fa-layer-group" style="margin-left:4px"></i>عرض الكل</button>' +
+    '<button class="btn btn-ghost btn-sm' + (type==='persons'?' active':'') + '" onclick="showFavoritesFilter(\'persons\', this)"><i class="fa-solid fa-user" style="margin-left:4px"></i>الأشخاص</button>' +
+    '<button class="btn btn-ghost btn-sm' + (type==='deals'?' active':'') + '" onclick="showFavoritesFilter(\'deals\', this)"><i class="fa-solid fa-file-contract" style="margin-left:4px"></i>الصفقات</button>' +
+    '</div>' +
+    filtered.map(p => renderPersonBlock(p, persons.indexOf(p))).join('');
+  
+  document.getElementById('emptyState').style.display = 'none';
+  document.getElementById('noResults').style.display = 'none';
+  
+  setTimeout(() => {
+    filtered.forEach(p => {
+      const el = document.getElementById('content_' + p.id);
+      if(el) el.style.display = 'block';
+    });
+  }, 100);
+}
 
 // ========== عرض أولي ==========
 render();
@@ -1354,6 +1491,7 @@ function closeAlert() {
 
 // فحص الأقساط
 setTimeout(() => {
+  if(!persons || persons.length === 0) return;
   const today = new Date();
   today.setHours(0,0,0,0);
   

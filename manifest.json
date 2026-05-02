@@ -1,0 +1,20 @@
+{
+  "name": "متتبع الأقساط",
+  "short_name": "متتبع",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F8F6F2",
+  "theme_color": "#8B0000",
+  "icons": [
+    {
+      "src": "LOGO.PNG",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "LOGO.PNG",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

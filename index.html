@@ -2,8 +2,9 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=5.0,maximum-scale=1.0,user-scalable=yes"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=yes"/>
 <title>متتبع الأقساط · الريال القطري</title>
+<link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/png" href="LOGO.PNG">
 <!-- خطوط وأيقونات -->
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
@@ -147,7 +148,7 @@
   <div class="sidebar-menu" id="sec1" style="display:none">
     <button class="sidebar-item" onclick="closeSidebar(); openDashboard()"><span class="item-icon"><i class="fa-solid fa-chart-pie"></i></span><span class="item-label">لوحة التحكم</span></button>
     <button class="sidebar-item" onclick="closeSidebar(); openAddPerson()"><span class="item-icon"><i class="fa-solid fa-user-plus"></i></span><span class="item-label">إضافة شخص</span><span class="item-badge">+</span></button>
-    <button class="sidebar-item" onclick="closeSidebar(); showToast('المفضلة — قريباً', 'info')"><span class="item-icon"><i class="fa-solid fa-star" style="color:#FFD700"></i></span><span class="item-label">المفضلة</span></button>
+    <button class="sidebar-item" onclick="closeSidebar(); showFavorites()"><span class="item-icon"><i class="fa-solid fa-star" style="color:#FFD700"></i></span><span class="item-label">المفضلة</span><span class="item-badge" id="cnt-fav">0</span></button>
   </div>
   <div class="sidebar-divider"></div>
   <div class="sidebar-section-title" onclick="toggleSection('sec2')" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;">
@@ -179,10 +180,12 @@
     <button class="sidebar-item" onclick="closeSidebar(); showToast('سياسة الخصوصية — قريباً', 'info')"><span class="item-icon"><i class="fa-solid fa-file-contract"></i></span><span class="item-label">سياسة الخصوصية</span></button>
   </div>
   <div class="sidebar-footer">
+    <button class="sidebar-quick-btn" onclick="closeSidebar(); render()" title="الرئيسية"><i class="fa-solid fa-house"></i></button>
     <button class="sidebar-quick-btn" id="quickDark" onclick="toggleDarkMode()" title="الوضع الليلي"><i class="fa-solid fa-moon"></i></button>
     <button class="sidebar-quick-btn" onclick="closeSidebar(); openAddPerson()" title="إضافة شخص"><i class="fa-solid fa-user-plus"></i></button>
     <button class="sidebar-quick-btn" onclick="closeSidebar(); exportData()" title="تصدير"><i class="fa-solid fa-file-export"></i></button>
     <button class="sidebar-quick-btn danger-btn" onclick="closeSidebar(); logout()" title="تسجيل الخروج"><i class="fa-solid fa-right-from-bracket"></i></button>
+  </div>
   </div>
 </div>
 <!-- ========== لوحة التحكم ========== -->

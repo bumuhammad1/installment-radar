@@ -1589,3 +1589,19 @@ body.dark-mode .search-input {
 body.dark-mode #pv_sadaqa {
   color: #DAA520 !important;
 }
+.fsel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 6px;
+  font-size: 12px;
+  font-family: 'Tajawal', sans-serif;
+  text-align: center;
+  color: var(--text);
+}
+.danger-btn {
+  color: #e11d48 !important;
+}
+.danger-btn:hover {
+  background: var(--red-l) !important;
+}

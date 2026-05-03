@@ -6,15 +6,12 @@
 <title>متتبع الأقساط · الريال القطري</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/png" href="LOGO.PNG">
-<!-- خطوط وأيقونات -->
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-
-<!-- رابط ملف CSS -->
 <link rel="stylesheet" href="style.css">
-
 </head>
 <body>
+
 <div id="alertOverlay" onclick="closeAlert()">
   <div id="alertBar" onclick="event.stopPropagation()">
     <div class="alert-title"><span class="alert-icon"><i class="fa-solid fa-bell"></i></span><span id="alertTitle">تنبيه أقساط</span></div>
@@ -22,35 +19,35 @@
     <div class="alert-line" id="alertLine"></div>
   </div>
 </div>
-<!-- ========== شاشة التحميل ========== -->
+
 <div id="loadingOverlay">
   <div class="loading-spinner"></div>
   <div class="loading-text">جاري تحميل بياناتك...</div>
 </div>
 
-<!-- ========== شاشة تسجيل الدخول ========== -->
 <div id="authOverlay" style="display:none">
   <div class="login-card">
     <img src="LOGO.PNG" style="display:block;margin:0 auto 20px;width:80px;height:80px;border-radius:16px">
-    <h2 style="margin-bottom:20px">تسجيل الدخول</h2>
+    <h2 style="margin-bottom:20px;color:var(--text)">تسجيل الدخول</h2>
     <input type="email" id="emailInput" class="inp" style="margin-bottom:10px" placeholder="البريد الإلكتروني"
       onkeydown="if(event.key==='Enter')document.getElementById('passInput').focus()"/>
     <input type="password" id="passInput" class="inp" style="margin-bottom:10px" placeholder="كلمة المرور"
       onkeydown="if(event.key==='Enter')login()"/>
-    <button class="btn btn-blue" style="width:100%;justify-content:center;margin-bottom:15px" onclick="login()">دخول</button>
+    <button class="btn btn-blue" style="width:100%;justify-content:center;margin-bottom:15px" onclick="login()">
+      <i class="fa-solid fa-right-to-bracket"></i> دخول
+    </button>
     <div style="display:flex; align-items:center; margin: 10px 0 15px 0;">
       <hr style="flex:1; border:0; border-top:1px solid var(--border);">
       <span style="padding:0 10px; color:var(--muted); font-size:12px;">أو</span>
       <hr style="flex:1; border:0; border-top:1px solid var(--border);">
     </div>
-    <button class="btn btn-ghost" style="width:100%; justify-content:center; gap:10px; background:#fff; border:1px solid var(--border2)!important;" onclick="loginWithGoogle()">
+    <button class="btn btn-ghost" style="width:100%; justify-content:center; gap:10px;" onclick="loginWithGoogle()">
       <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="18">
       الدخول بواسطة Google
     </button>
   </div>
 </div>
 
-<!-- ========== رأس الصفحة ========== -->
 <div class="header">
   <div class="header-inner">
     <div style="display:flex;align-items:center;gap:8px">
@@ -78,32 +75,32 @@
   </div>
 </div>
 
-<!-- ========== شريط الإحصائيات ========== -->
 <div class="stats-bar" id="statsBar" style="display:none">
   <div class="stats-inner" id="statsContainer"></div>
 </div>
 
-<!-- ========== شريط التبويبات والبحث ========== -->
 <div class="tabs-bar" id="tabsBar" style="display:none">
   <div class="tabs-inner">
     <div class="tabs-group">
       <button class="tab active" data-t="all" onclick="setTab('all')"><i class="fa-solid fa-layer-group" style="margin-left:5px"></i>الكل <span class="tab-badge" id="cnt-all">0</span></button>
-      <button class="tab" data-t="late" onclick="setTab('late')"><i class="fa-solid fa-clock" style="margin-left:5px;color:#8B0000"></i>متأخر <span class="tab-badge" id="cnt-late">0</span></button>
-      <button class="tab" data-t="active" onclick="setTab('active')"><i class="fa-solid fa-spinner" style="margin-left:5px;color:#B8860B"></i>نشط <span class="tab-badge" id="cnt-active">0</span></button>
-      <button class="tab" data-t="done" onclick="setTab('done')"><i class="fa-solid fa-circle-check" style="margin-left:5px;color:#2d5a27"></i>مكتمل <span class="tab-badge" id="cnt-done">0</span></button>
+      <button class="tab" data-t="late" onclick="setTab('late')"><!-- المتأخر -->
+<i class="fa-solid fa-clock" style="margin-left:5px;color:#DC2626"></i>متأخر <span class="tab-badge" id="cnt-late">0</span></button>
+      <button class="tab" data-t="active" onclick="setTab('active')"><<!-- النشط -->
+<i class="fa-solid fa-spinner" style="margin-left:5px;color:#D97706"></i>نشط <span class="tab-badge" id="cnt-active">0</span></button>
+      <button class="tab" data-t="done" onclick="setTab('done')"><!-- المكتمل -->
+<i class="fa-solid fa-circle-check" style="margin-left:5px;color:#059669"></i>مكتمل <span class="tab-badge" id="cnt-done">0</span></button>
     </div>
     <div class="tabs-spacer"></div>
     <div class="search-wrap">
-      <span class="search-icon"><i class="fa-solid fa-magnifying-glass" style="color:#B8860B"></i></span>
+      <span class="search-icon"><i class="fa-solid fa-magnifying-glass" style="color:var(--muted)"></i></span>
       <input class="search-input" id="searchInput" placeholder="بحث بالاسم أو الجهاز..." oninput="onSearch(this.value)"/>
-      <button class="search-clear" id="searchClear" onclick="clearSearch()" style="display:none">✕</button>
+      <button class="search-clear" id="searchClear" onclick="clearSearch()" style="display:none"><i class="fa-solid fa-xmark"></i></button>
     </div>
   </div>
 </div>
 
-<!-- ========== شريط الترتيب ========== -->
 <div class="sort-bar" id="sortBar" style="display:none">
-  <span class="sort-label">ترتيب الصفقات:</span>
+  <span class="sort-label"><i class="fa-solid fa-arrow-down-wide-short" style="margin-left:4px"></i>ترتيب الصفقات:</span>
   <button class="sort-btn active" data-sort="newest"   onclick="setSort('newest')">الأحدث</button>
   <button class="sort-btn"        data-sort="oldest"   onclick="setSort('oldest')">الأقدم</button>
   <button class="sort-btn"        data-sort="late"     onclick="setSort('late')">الأكثر تأخراً</button>
@@ -111,7 +108,6 @@
   <button class="sort-btn"        data-sort="progress" onclick="setSort('progress')">الأقرب اكتمالاً</button>
 </div>
 
-<!-- ========== المحتوى الرئيسي ========== -->
 <div class="content">
   <div id="personsList"></div>
   <div class="empty-box" id="emptyState">
@@ -127,10 +123,8 @@
   <button class="add-bottom" onclick="openAddPerson()"><i class="fa-solid fa-user-plus"></i> إضافة شخص جديد</button>
 </div>
 
-<!-- ========== حاوية الإشعارات ========== -->
 <div id="toastContainer"></div>
 
-<!-- ========== القائمة الجانبية ========== -->
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
 <div class="sidebar" id="sidebar">
   <div class="sidebar-user">
@@ -139,7 +133,7 @@
     <div class="sidebar-user-info">
       <div class="sidebar-user-name" id="userName">مستخدم</div>
       <div class="sidebar-user-email" id="userEmail">example@gmail.com</div>
-      <div class="sidebar-user-badge">🟢 نشط</div>
+      <div class="sidebar-user-badge"><i class="fa-solid fa-circle" style="font-size:6px;color:var(--green);margin-left:4px"></i>نشط</div>
     </div>
   </div>
   <div class="sidebar-section-title" onclick="toggleSection('sec1')" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;">
@@ -186,19 +180,18 @@
     <button class="sidebar-quick-btn" onclick="closeSidebar(); exportData()" title="تصدير"><i class="fa-solid fa-file-export"></i></button>
     <button class="sidebar-quick-btn danger-btn" onclick="closeSidebar(); logout()" title="تسجيل الخروج"><i class="fa-solid fa-right-from-bracket"></i></button>
   </div>
-  </div>
 </div>
-<!-- ========== لوحة التحكم ========== -->
+
 <div class="modal-overlay" id="modalDashboard">
   <div class="modal-box" style="max-width:700px">
     <div class="modal-head">
       <span class="modal-title"><i class="fa-solid fa-chart-pie" style="margin-left:6px"></i>لوحة التحكم</span>
-      <button class="modal-close" onclick="closeModal('modalDashboard')">&times;</button>
+      <button class="modal-close" onclick="closeModal('modalDashboard')"><i class="fa-solid fa-xmark"></i></button>
     </div>
     <div id="dashboardContent"></div>
   </div>
 </div>
-<!-- ========== مودال تفاصيل الصدقة ========== -->
+
 <div class="modal-overlay" id="modalSadaqa">
   <div class="modal-box" style="max-width:600px">
     <div class="modal-head">
@@ -208,7 +201,7 @@
     <div id="sadaqaContent"></div>
   </div>
 </div>
-<!-- ========== الأرشيف ========== -->
+
 <div class="modal-overlay" id="modalArchive">
   <div class="modal-box" style="max-width:600px">
     <div class="modal-head">
@@ -218,7 +211,7 @@
     <div id="archiveList"></div>
   </div>
 </div>
-<!-- ========== مودال إضافة شخص ========== -->
+
 <div class="modal-overlay" id="modalPerson">
   <div class="modal-box" style="max-width:400px">
     <div class="modal-head">
@@ -236,64 +229,104 @@
   </div>
 </div>
 
-<!-- ========== مودال إضافة/تعديل صفقة ========== -->
 <div class="modal-overlay" id="modalDeal">
   <div class="modal-box">
     <div class="modal-head">
       <span class="modal-title" id="dealModalTitle">إضافة صفقة جديدة</span>
       <button class="modal-close" onclick="closeModal('modalDeal')"><i class="fa-solid fa-xmark"></i></button>
     </div>
-    <div class="field"><div class="field-lbl-row"><span class="field-lbl"> اسم العميل/ نوع الجهاز </span></div><input class="inp" id="d_name" placeholder="مثال:IPhone، حمد..." oninput="previewDeal()"/></div>
-    <div class="field">
-  <div class="field-lbl-row"><span class="field-lbl">رقم العميل (واتساب)</span><span class="field-hint">اختياري</span></div>
-  <input class="inp" type="tel" id="d_phone" placeholder="مثال: 974XXXXXXXX" oninput="previewDeal()"/>
-</div>
+
+    <div class="field"><div class="field-lbl-row"><span class="field-lbl"><i class="fa-solid fa-tag" style="margin-left:4px"></i>اسم العميل / نوع الجهاز</span></div><input class="inp" id="d_name" placeholder="مثال: iPhone 15 Pro Max، حمد..." oninput="previewDeal()"/></div>
+
+    <div class="field"><div class="field-lbl-row"><span class="field-lbl"><i class="fa-brands fa-whatsapp" style="margin-left:4px"></i>رقم العميل (واتساب)</span><span class="field-hint">اختياري</span></div><input class="inp" type="tel" id="d_phone" placeholder="مثال: 974XXXXXXXX" oninput="previewDeal()"/></div>
+
     <div class="field-row">
       <div class="field"><div class="field-lbl-row"><span class="field-lbl">سعر الجهاز (ر.ق)</span></div><input class="inp" type="number" id="d_price" placeholder="0" oninput="previewDeal()"/></div>
       <div class="field"><div class="field-lbl-row"><span class="field-lbl">سعر جميع الأجهزة</span><span class="field-hint">تلقائي</span></div><input class="inp inp-ro" type="number" id="d_price_all" placeholder="0" readonly/></div>
     </div>
+
     <div class="field-row">
       <div class="field"><div class="field-lbl-row"><span class="field-lbl">الربح لكل جهاز (ر.ق)</span></div><input class="inp" type="number" id="d_profit" placeholder="0" oninput="previewDeal()"/></div>
       <div class="field"><div class="field-lbl-row"><span class="field-lbl">ربح جميع الأجهزة</span><span class="field-hint">تلقائي</span></div><input class="inp inp-ro" type="number" id="d_profit_all" placeholder="0" readonly/></div>
     </div>
+
     <div class="field-row">
       <div class="field"><div class="field-lbl-row"><span class="field-lbl">عدد الأجهزة</span></div><input class="inp" type="number" id="d_count" min="1" oninput="previewDeal()" placeholder="0"/></div>
       <div class="field"><div class="field-lbl-row"><span class="field-lbl">المدة (شهر)</span></div><input class="inp" type="number" id="d_months" min="1" oninput="previewDeal(); autoSetEndDate()" placeholder="0"/></div>
     </div>
-    <div class="field"><label class="field-lbl">تاريخ الشراء</label>
+
+    <div class="field"><label class="field-lbl"><i class="fa-solid fa-calendar-days" style="margin-left:4px"></i>تاريخ الشراء</label>
       <div class="date-picker">
         <select class="fsel" id="d_from_d" onchange="previewDeal(); autoSetEndDate()"><option value="">يوم</option></select>
         <select class="fsel" id="d_from_m" onchange="previewDeal(); autoSetEndDate()"><option value="">الشهر</option></select>
         <select class="fsel" id="d_from_y" onchange="previewDeal(); autoSetEndDate()"><option value="">السنة</option></select>
       </div><div class="date-display" id="d_from_preview"></div></div>
-    <div class="field"><label class="field-lbl">تاريخ الانتهاء</label>
+
+    <div class="field"><label class="field-lbl"><i class="fa-solid fa-hourglass-end" style="margin-left:4px"></i>تاريخ الانتهاء</label>
       <div class="date-picker">
         <select class="fsel" id="d_to_d" onchange="previewDeal()"><option value="">يوم</option></select>
         <select class="fsel" id="d_to_m" onchange="previewDeal()"><option value="">الشهر</option></select>
         <select class="fsel" id="d_to_y" onchange="previewDeal()"><option value="">السنة</option></select>
       </div><div class="date-display" id="d_to_preview"></div></div>
+
     <div class="field"><div class="field-lbl-row"><span class="field-lbl">إجمالي الصفقة (ر.ق)</span><span class="field-hint">يتعبأ تلقائياً</span></div><input class="inp inp-ro" type="number" id="d_check_amount" placeholder="0" readonly/></div>
-    <div class="field"><div class="field-lbl-row"><span class="field-lbl">حالة الصفقة</span></div><select class="inp" id="d_status" style="appearance:menulist"><option value="active">◉ نشطة</option>
-<option value="pending">◷ انتظار شيك</option>
-<option value="closed">✔ مكتملة</option></select></div>
-    <div class="field"><div class="field-lbl-row"><span class="field-lbl">ملاحظات (اختياري)</span></div><textarea class="inp" id="d_notes" rows="2" placeholder="أي تفاصيل إضافية..."></textarea></div>
+
+    <div class="field"><div class="field-lbl-row"><span class="field-lbl"><i class="fa-solid fa-circle-question" style="margin-left:4px"></i>حالة الصفقة</span></div><select class="inp" id="d_status" style="appearance:menulist"><option value="active">◉ نشطة</option><option value="pending">◷ انتظار شيك</option><option value="closed">✔ مكتملة</option></select></div>
+
+    <!-- ========== حقل الشريك ========== -->
+    <div class="field" style="margin-top:12px">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+        <input type="checkbox" id="d_hasPartner" onchange="togglePartnerFields()" style="width:18px;height:18px;accent-color:#B8860B;">
+        <span style="font-weight:700;font-size:13px;color:var(--text)"><i class="fa-solid fa-handshake" style="margin-left:5px;color:#B8860B"></i>يوجد شريك في الربح</span>
+      </label>
+    </div>
+
+    <div id="partnerFields" style="display:none;background:var(--amber-l);border:1px solid var(--amber-b);border-radius:12px;padding:12px;margin-bottom:13px">
+      <div class="field">
+        <div class="field-lbl-row"><span class="field-lbl"><i class="fa-solid fa-user" style="margin-left:4px"></i>اسم الشريك</span></div>
+        <input class="inp" id="d_partnerName" placeholder="اسم الشريك..."/>
+      </div>
+      <div class="field">
+        <div class="field-lbl-row"><span class="field-lbl"><i class="fa-solid fa-gear" style="margin-left:4px"></i>نوع الحصة</span></div>
+        <select class="inp" id="d_partnerType" onchange="previewDeal(); togglePartnerValueLabel()" style="appearance:menulist">
+          <option value="amount">💰 مبلغ ثابت</option>
+          <option value="percent">📊 نسبة مئوية</option>
+          <option value="half">🤝 نصف الربح</option>
+        </select>
+      </div>
+      <div class="field" id="partnerValueField">
+        <div class="field-lbl-row"><span class="field-lbl" id="partnerValueLabel">💰 المبلغ (ر.ق)</span></div>
+        <input class="inp" type="number" id="d_partnerValue" placeholder="0" oninput="previewDeal()"/>
+      </div>
+      <div class="field">
+        <div class="field-lbl-row"><span class="field-lbl"><i class="fa-solid fa-money-bill-wave" style="margin-left:4px"></i>المبلغ اللي دفعه الشريك (ر.ق)</span><span class="field-hint">0 إذا لم يدفع</span></div>
+        <input class="inp" type="number" id="d_partnerPaid" placeholder="0" oninput="previewDeal()"/>
+      </div>
+      <div id="partnerSharePreview" style="font-size:12px;font-weight:700;color:#B8860B;text-align:center;margin-top:6px"></div>
+    </div>
+
+    <div class="field"><div class="field-lbl-row"><span class="field-lbl"><i class="fa-solid fa-note-sticky" style="margin-left:4px"></i>ملاحظات (اختياري)</span></div><textarea class="inp" id="d_notes" rows="2" placeholder="أي تفاصيل إضافية..."></textarea></div>
+
     <div class="field"><label class="field-lbl"><i class="fa-solid fa-image"></i> صورة الشيك (اختياري)</label>
-      <div id="d_img_section" style="display:none;margin-bottom:8px"><div class="img-section"><span style="font-size:12px;flex:1"><i class="fa-solid fa-paperclip" style="margin-left:4px"></i> يوجد صورة مرفقة</span><button class="bsm b-img" onclick="viewDealImage()"><i class="fa-solid fa-eye" style="margin-left:4px"></i> عرض</button><button class="bsm b-del" onclick="deleteDealImage()"><i class="fa-solid fa-trash"></i> حذف</button></div></div>
+      <div id="d_img_section" style="display:none;margin-bottom:8px"><div class="img-section"><span style="font-size:12px;flex:1"><i class="fa-solid fa-paperclip" style="margin-left:4px"></i>يوجد صورة مرفقة</span><button class="bsm b-img" onclick="viewDealImage()"><i class="fa-solid fa-eye" style="margin-left:4px"></i>عرض</button><button class="bsm b-del" onclick="deleteDealImage()"><i class="fa-solid fa-trash"></i>حذف</button></div></div>
       <input class="inp" type="file" id="d_image" accept="image/*" onchange="handleImageUpload()"/>
-      <div id="d_img_size_warn" class="img-size-warn"><i class="fa-solid fa-circle-exclamation"></i> حجم الصورة كبير — قد يسبب مشكلة في الحفظ. يُنصح بصورة أصغر من 1MB.</div>
+      <div id="d_img_size_warn" class="img-size-warn"><i class="fa-solid fa-circle-exclamation"></i>حجم الصورة كبير — قد يسبب مشكلة في الحفظ. يُنصح بصورة أصغر من 1MB.</div>
       <img id="d_img_preview" class="img-preview" style="display:none"/>
     </div>
+
     <div class="sec-title" style="margin:13px 0 9px;font-size:12px;font-weight:800;color:var(--sub)">معاينة فورية</div>
-    <div class="prev-box" style="background:var(--panel);border-radius:13px;padding:13px;margin-bottom:11px">
-      <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px"><span style="color:var(--sub)">رأس المال</span><span id="pv_cost"><i class="fa-solid fa-minus"></i></span></div>
-      <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px"><span style="color:var(--sub)">إجمالي الصفقة</span><span id="pv_total"><i class="fa-solid fa-minus"></i></span></div>
-      <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px"><span style="color:var(--sub)">صافي الربح</span><span id="pv_profit"><i class="fa-solid fa-minus"></i></span></div>
-      <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px"><span style="color:var(--sub)">القسط الشهري</span><span id="pv_monthly"><i class="fa-solid fa-minus"></i></span></div>
-      <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px"><span style="color:var(--sub)">ROI الكلي</span><span id="pv_roi"><i class="fa-solid fa-minus"></i></span></div>
-      <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px"><span style="color:var(--sub)"> ربح/شهر</span><span id="pv_pct"><i class="fa-solid fa-minus"></i></span></div>
-      <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px"><span style="color:var(--sub)">تاريخ الانتهاء</span><span id="pv_expire"><i class="fa-solid fa-minus"></i></span></div>
-      <div style="display:flex;justify-content:space-between;padding:5px 0;font-size:12px"><span style="color:var(--sub)"><i class="fa-solid fa-hand-holding-heart" style="margin-left:4px"></i>الصدقة (1%)</span><span id="pv_sadaqa" style="color:var(--gold);font-weight:800">—</span></div>
+    <div class="prev-box" style="background:var(--panel);border:1px solid var(--border);border-radius:13px;padding:13px;margin-bottom:11px">
+      <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px"><span style="color:var(--sub)">رأس المال</span><span id="pv_cost" style="color:#1a1a1a"><i class="fa-solid fa-minus"></i></span></div>
+      <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px"><span style="color:var(--sub)">إجمالي الصفقة</span><span id="pv_total" style="color:#1a1a1a"><i class="fa-solid fa-minus"></i></span></div>
+      <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px"><span style="color:var(--sub)">صافي ربحك</span><span id="pv_profit" style="color:#7C3AED"><i class="fa-solid fa-minus"></i></span></div>
+      <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px"><span style="color:var(--sub)">القسط الشهري</span><span id="pv_monthly" style="color:#1a1a1a"><i class="fa-solid fa-minus"></i></span></div>
+      <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px"><span style="color:var(--sub)">ROI الكلي</span><span id="pv_roi" style="color:#8B0000"><i class="fa-solid fa-minus"></i></span></div>
+      <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px"><span style="color:var(--sub)">ربح/شهر</span><span id="pv_pct" style="color:#1a1a1a"><i class="fa-solid fa-minus"></i></span></div>
+      <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px"><span style="color:var(--sub)">تاريخ الانتهاء</span><span id="pv_expire" style="color:#1a1a1a"><i class="fa-solid fa-minus"></i></span></div>
+      <div style="display:flex;justify-content:space-between;padding:5px 0;font-size:12px"><span style="color:var(--sub)"><i class="fa-solid fa-hand-holding-heart" style="margin-left:4px"></i>الصدقة (1% من صافي ربحك)</span><span id="pv_sadaqa" style="color:var(--gold);font-weight:800">—</span></div>
+      <div id="pv_partner" style="display:none;justify-content:space-between;padding:5px 0;font-size:12px;border-top:1px solid var(--amber-b);margin-top:4px;padding-top:8px"><span style="color:#B8860B"><i class="fa-solid fa-handshake" style="margin-left:4px"></i>نصيب الشريك</span><span id="pv_partner_val" style="color:#B8860B;font-weight:800">—</span></div>
     </div>
+
     <div class="modal-acts">
       <button class="btn btn-ghost btn-sm" onclick="closeModal('modalDeal')">إلغاء</button>
       <button class="btn btn-green btn-sm" onclick="saveDeal()"><i class="fa-solid fa-floppy-disk"></i> حفظ الصفقة</button>
@@ -301,10 +334,9 @@
   </div>
 </div>
 
-<!-- ========== مودال تسجيل دفعة ========== -->
 <div class="modal-overlay" id="modalPayment">
   <div class="modal-box" style="max-width:400px">
-    <div class="modal-head"><span class="modal-title">تسجيل دفعة جديدة</span><button class="modal-close" onclick="closeModal('modalPayment')"><i class="fa-solid fa-xmark"></i></button></div>
+    <div class="modal-head"><span class="modal-title"><i class="fa-solid fa-money-bill-wave" style="margin-left:6px"></i>تسجيل دفعة جديدة</span><button class="modal-close" onclick="closeModal('modalPayment')"><i class="fa-solid fa-xmark"></i></button></div>
     <div class="field"><div class="field-lbl-row"><span class="field-lbl">تاريخ الدفع</span></div><input class="inp" type="date" id="p_date"/></div>
     <div class="field"><div class="field-lbl-row"><span class="field-lbl">المبلغ — ر.ق</span><span class="field-hint" id="p_hint" style="color:var(--amber);font-weight:700"></span></div><input class="inp" type="number" id="p_amount" placeholder="0.00" onkeydown="if(event.key==='Enter')savePayment()"/></div>
     <div class="field"><div class="field-lbl-row"><span class="field-lbl">ملاحظة</span></div><input class="inp" id="p_note" placeholder="اختياري..." onkeydown="if(event.key==='Enter')savePayment()"/></div>
@@ -315,7 +347,6 @@
   </div>
 </div>
 
-<!-- ========== مودال عرض الصورة ========== -->
 <div class="modal-overlay" id="modalImageView">
   <div class="modal-box" style="max-width:500px;text-align:center">
     <div class="modal-head"><span class="modal-title"><i class="fa-solid fa-image" style="margin-left:6px"></i>صورة الشيك</span><button class="modal-close" onclick="closeModal('modalImageView')"><i class="fa-solid fa-xmark"></i></button></div>
@@ -324,7 +355,6 @@
   </div>
 </div>
 
-<!-- ========== مودال تأكيد الحذف ========== -->
 <div class="modal-overlay" id="modalConfirm">
   <div class="modal-box" style="max-width:380px">
     <div class="modal-head"><span class="modal-title">تأكيد الحذف</span><button class="modal-close" onclick="closeModal('modalConfirm')"><i class="fa-solid fa-xmark"></i></button></div>
@@ -338,11 +368,10 @@
   </div>
 </div>
 
-<!-- ========== مودال تأكيد الخروج ========== -->
 <div class="modal-overlay" id="modalLogout">
   <div class="modal-box" style="max-width:380px">
     <div class="modal-head"><span class="modal-title">تسجيل الخروج</span><button class="modal-close" onclick="closeModal('modalLogout')"><i class="fa-solid fa-xmark"></i></button></div>
-    <div class="confirm-icon"><i class="fa-solid fa-right-from-bracket"></i></div>
+    <div class="confirm-icon"><i class="fa-solid fa-right-from-bracket" style="color:#8B0000"></i></div>
     <div class="confirm-msg">هل تريد تسجيل الخروج؟</div>
     <div class="confirm-sub">سيتم إنهاء جلستك الحالية</div>
     <div class="modal-acts" style="justify-content:center">
@@ -352,10 +381,8 @@
   </div>
 </div>
 
-<!-- رابط ملف JavaScript -->
 <script src="script.js"></script>
 
-<!-- Firebase -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";

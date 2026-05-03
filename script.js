@@ -9,7 +9,7 @@ let ctx       = {};
 let openDetails = new Set();
 
 // ========== لوحة الألوان للتمييز البصري ==========
-const PALETTE = ['#2563EB','#7C3AED','#059669','#D97706','#DB2777','#0891B2','#DC2626'];
+const PALETTE = ['#1a1a1a','#DC2626','#059669','#1E3A5F','#059669','#D97706','#1a1a1a'];
 
 // ========== أسماء الشهور بالعربية ==========
 const MN = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
@@ -20,34 +20,13 @@ const fmtNum   = n => Number(n||0).toLocaleString('en-US');
 const fmtPct   = n => Number(n||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) + '%';
 const fmtDate  = s => { if(!s) return '—'; const d=new Date(s); return `${d.getDate()} ${MN[d.getMonth()]} ${d.getFullYear()}`; };
 
-// ========== حساب مدة العقد بين تاريخين ==========
-function durationLabel(from, to) {
-  if(!from||!to) return '—';
-  const a=new Date(from), b=new Date(to);
-  if(b<=a) return '—';
-  let years=b.getFullYear()-a.getFullYear(), months=b.getMonth()-a.getMonth(), days=b.getDate()-a.getDate();
-  if(days<0){months--;const prev=new Date(b.getFullYear(),b.getMonth(),0);days+=prev.getDate();}
-  if(months<0){years--;months+=12;}
-  const parts=[];
-  if(years>0)  parts.push(years+' سنة');
-  if(months>0) parts.push(months+' شهر');
-  if(days>0)   parts.push(days+' يوم');
-  return parts.join(' و') || '—';
-}
-
-// ========== حساب عدد الشهور بين تاريخين ==========
-function monthsBetween(from, to) {
-  if(!from||!to) return 1;
-  const a=new Date(from), b=new Date(to);
-  return Math.max(1,(b.getFullYear()-a.getFullYear())*12+b.getMonth()-a.getMonth());
-}
-
 // ========== دوال مساعدة للصفقات ==========
 const genId  = () => crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substr(2,9)+Date.now().toString(36);
 const dTotal = d => (Number(d.devicePrice)+Number(d.profit)) * Number(d.deviceCount||1);
 const dPaid  = d => (d.payments||[]).reduce((s,p)=>s+p.amount,0);
 const isDone = d => dPaid(d) >= dTotal(d);
 const isFullyDone = d => isDone(d) && d.dateTo && new Date() >= new Date(d.dateTo);
+
 function findDealById(id) {
   for (let p of persons) {
     const deal = (p.deals||[]).find(d => d.id === id);
@@ -56,7 +35,6 @@ function findDealById(id) {
   return null;
 }
 
-// ========== حساب أيام التأخير ==========
 function daysLate(d) {
   if(!d.dateTo) return 0;
   if(isDone(d)) return 0;
@@ -65,47 +43,48 @@ function daysLate(d) {
   return diff>0?diff:0;
 }
 
-// ========== دالة عرض الإشعارات المنبثقة ==========
+function calcPartnerShare(d) {
+  if(!d.hasPartner || !d.partnerType) return 0;
+  const profit = Number(d.profit || 0) * Number(d.deviceCount || 1);
+  if(d.partnerType === 'half') return profit / 2;
+  else if(d.partnerType === 'amount') return Math.min(Number(d.partnerValue || 0), profit);
+  else if(d.partnerType === 'percent') return profit * (Number(d.partnerValue || 0) / 100);
+  return 0;
+}
+
+function calcYourNetProfit(d) {
+  const profitAll = Number(d.profit || 0) * Number(d.deviceCount || 1);
+  const partnerShare = calcPartnerShare(d);
+  return profitAll - partnerShare;
+}
+
+function monthsBetween(from, to) {
+  if(!from||!to) return 1;
+  const a=new Date(from), b=new Date(to);
+  return Math.max(1,(b.getFullYear()-a.getFullYear())*12+b.getMonth()-a.getMonth());
+}
+
+// ========== دوال العرض ==========
 function showToast(msg, type = 'success', duration = 3000, customEmoji = null) {
   const container = document.getElementById('toastContainer');
   if (!container) return;
-
   const icons = {
-    success: { icon: 'fa-solid fa-circle-check', emoji: '<i class="fa-solid fa-upload"></i>' },
-    error:   { icon: 'fa-solid fa-circle-xmark', emoji: '<i class="fa-solid fa-user-xmark"></i>' },
-    info:    { icon: 'fa-solid fa-circle-info',  emoji: '<i class="fa-solid fa-cloud"></i>' },
+    success: { icon: 'fa-solid fa-circle-check', emoji: '<i class="fa-solid fa-circle-check"></i>' },
+    error:   { icon: 'fa-solid fa-circle-xmark', emoji: '<i class="fa-solid fa-circle-xmark"></i>' },
+    info:    { icon: 'fa-solid fa-circle-info',  emoji: '<i class="fa-solid fa-circle-info"></i>' },
   };
-
   const { icon, emoji } = icons[type] || icons.info;
   const finalEmoji = customEmoji || emoji;
-
   const el = document.createElement('div');
   el.className = `toast toast-${type}`;
-  el.innerHTML = `
-    <div class="toast-top-row">
-      <span class="toast-icon"><i class="${icon}"></i></span>
-      <span class="toast-text">${msg}</span>
-      <button class="toast-close-btn"><i class="fa-solid fa-xmark"></i></button>
-    </div>
-    <div class="toast-emoji">${finalEmoji}</div>
-  `;
-
+  el.innerHTML = `<div class="toast-top-row"><span class="toast-icon"><i class="${icon}"></i></span><span class="toast-text">${msg}</span><button class="toast-close-btn"><i class="fa-solid fa-xmark"></i></button></div><div class="toast-emoji">${finalEmoji}</div>`;
   container.appendChild(el);
   requestAnimationFrame(() => el.classList.add('show'));
-
-  const remove = () => {
-    el.classList.remove('show');
-    setTimeout(() => el.remove(), 250);
-  };
-
+  const remove = () => { el.classList.remove('show'); setTimeout(() => el.remove(), 250); };
   const timer = setTimeout(remove, duration);
-  el.querySelector('.toast-close-btn').onclick = () => {
-    clearTimeout(timer);
-    remove();
-  };
+  el.querySelector('.toast-close-btn').onclick = () => { clearTimeout(timer); remove(); };
 }
 
-// ========== مودال التأكيد ==========
 function showConfirm(msg, sub, onConfirm) {
   document.getElementById('confirmMsg').textContent = msg;
   document.getElementById('confirmSub').textContent = sub || 'هذا الإجراء لا يمكن التراجع عنه';
@@ -114,555 +93,37 @@ function showConfirm(msg, sub, onConfirm) {
   openModal('modalConfirm');
 }
 
-// ========== دوال فتح وإغلاق النوافذ المنبثقة ==========
 const openModal  = id => document.getElementById(id).classList.add('open');
 const closeModal = id => document.getElementById(id).classList.remove('open');
+document.querySelectorAll('.modal-overlay').forEach(el => el.addEventListener('click', e => { if(e.target===el) el.classList.remove('open'); }));
 
-document.querySelectorAll('.modal-overlay').forEach(el =>
-  el.addEventListener('click', e => { if(e.target===el) el.classList.remove('open'); }));
-
-// ========== دوال الترتيب ==========
-function setSort(s) {
-  activeSort = s;
-  document.querySelectorAll('.sort-btn').forEach(b => b.classList.toggle('active', b.dataset.sort===s));
-  render();
-}
-
+// ========== الترتيب والتبويب ==========
+function setSort(s) { activeSort = s; document.querySelectorAll('.sort-btn').forEach(b => b.classList.toggle('active', b.dataset.sort===s)); render(); }
 function sortDeals(deals) {
   const arr = [...deals];
   if(activeSort === 'newest')    return arr.sort((a,b)=>new Date(b.dateFrom||0)-new Date(a.dateFrom||0));
   if(activeSort === 'oldest')    return arr.sort((a,b)=>new Date(a.dateFrom||0)-new Date(b.dateFrom||0));
   if(activeSort === 'late')      return arr.sort((a,b)=>daysLate(b)-daysLate(a));
   if(activeSort === 'remaining') return arr.sort((a,b)=>(dTotal(b)-dPaid(b))-(dTotal(a)-dPaid(a)));
-  if(activeSort === 'progress')  return arr.sort((a,b)=>{
-    const pa=dTotal(a)>0?dPaid(a)/dTotal(a):0;
-    const pb=dTotal(b)>0?dPaid(b)/dTotal(b):0;
-    return pb-pa;
-  });
+  if(activeSort === 'progress')  return arr.sort((a,b)=>{ const pa=dTotal(a)>0?dPaid(a)/dTotal(a):0; const pb=dTotal(b)>0?dPaid(b)/dTotal(b):0; return pb-pa; });
   return arr;
 }
 
-// ========== دوال إدارة الأشخاص ==========
-function openAddPerson() {
-  ctx = { personMode: 'add' };
-  document.getElementById('personModalTitle').innerHTML = '<i class="fa-solid fa-user-plus"></i> إضافة شخص جديد';
-  document.getElementById('newPersonName').value = '';
-  openModal('modalPerson');
-  setTimeout(()=>document.getElementById('newPersonName').focus(),80);
-}
-
-function openEditPerson(pid) {
-  const p = persons.find(x=>x.id===pid);
-  ctx = { personMode: 'edit', pid };
-  document.getElementById('personModalTitle').innerHTML = '<i class="fa-solid fa-user-pen"></i> تعديل اسم الشخص';
-  document.getElementById('newPersonName').value = p.name;
-  openModal('modalPerson');
-  setTimeout(()=>document.getElementById('newPersonName').focus(),80);
-}
-
-function savePersonModal() {
-  const name = document.getElementById('newPersonName').value.trim();
-  if(!name) return;
-  if(ctx.personMode === 'edit') {
-    persons.find(x=>x.id===ctx.pid).name = name;
-    showToast('تم تعديل الاسم بنجاح', 'success', 3000, '<i class="fa-solid fa-user-pen"></i>');
-  } else {
-    persons.push({id:genId(), name, deals:[]});
-    showToast('تمت إضافة الشخص بنجاح', 'success', 3000, '<i class="fa-solid fa-user-plus"></i>');
-  }
-  closeModal('modalPerson');
-  render();
-  const _u = window._getUser?.();
-  if(_u && window._setDoc) {
-    const cleanData = JSON.parse(JSON.stringify(persons));
-    window._setDoc(window._doc(window._db, "users_data", _u.uid), { my_list: cleanData }).catch(()=>{});
-  }
-}
-
-function deletePerson(pid) {
-  const p = persons.find(x=>x.id===pid);
-  showConfirm(
-    `حذف "${p.name}" وجميع صفقاته؟`,
-    `سيتم حذف ${p.deals.length} صفقة نهائياً`,
-    () => {
-      persons = persons.filter(x=>x.id!==pid);
-      // ⬇️ أضف هالسطرين هنا بعد الحذف مباشرة
-      if (window._syncData) window._syncData();
-      // ⬆️
-      showToast('تم حذف الشخص وصفقاته', 'error', 3000, '<i class="fa-solid fa-user-slash"></i>');
-      render();
-    }
-  );
-}
-
-function deleteDeal(pid, did) {
-  const p = persons.find(x => x.id === pid);
-  const deal = p.deals.find(x => x.id === did);
-  const name = deal.deviceName || 'بدون اسم';
-  showConfirm(
-    `حذف صفقة "${name}"؟`,
-    `سيتم حذف الصفقة وكل دفعاتها نهائياً`,
-    () => {
-      p.deals = p.deals.filter(x => x.id !== did);
-      showToast('تم حذف الصفقة', 'error', 3000, '<i class="fa-solid fa-file-circle-xmark"></i>');
-      render();
-    }
-  );
-}
-function archiveDeal(pid, did) {
-  const p = persons.find(x => x.id === pid);
-  const deal = p.deals.find(x => x.id === did);
-  deal.archived = true;
-  showToast('تمت أرشفة الصفقة 📁', 'success', 3000, '<i class="fa-solid fa-box-archive"></i>');
-  render();
-  const _u = window._getUser?.();
-  if(_u && window._setDoc) {
-    const cleanData = JSON.parse(JSON.stringify(persons));
-    window._setDoc(window._doc(window._db, "users_data", _u.uid), { my_list: cleanData }).catch(()=>{});
-  }
-}
-function unarchiveDeal(pid, did) {
-  const p = persons.find(x => x.id === pid);
-  const deal = p.deals.find(x => x.id === did);
-  deal.archived = false;
-  showToast('تمت استعادة الصفقة ✅', 'success', 3000, '<i class="fa-solid fa-box-open"></i>');
-  render();
-  const _u = window._getUser?.();
-  if(_u && window._setDoc) {
-    const cleanData = JSON.parse(JSON.stringify(persons));
-    window._setDoc(window._doc(window._db, "users_data", _u.uid), { my_list: cleanData }).catch(()=>{});
-  }
-}
-function unarchiveDealFromModal(pid, did) {
-  unarchiveDeal(pid, did);
-  openArchive();
-}
-
-function openArchive() {
-  const archived = persons.flatMap(p =>
-    (p.deals||[]).filter(d => d.archived).map(d => ({...d, personName: p.name || 'بدون اسم', _pid: p.id}))
-  );
-  const html = archived.length === 0
-    ? `<div style="text-align:center;padding:40px;color:var(--muted)">لا توجد صفقات مؤرشفة</div>`
-    : archived.map(d => `
-  <div style="background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:10px;">
-    <div style="font-weight:800;font-size:14px;">${d.deviceName || 'بدون اسم'}</div>
-    <div style="font-size:11px;color:var(--muted);margin-top:4px;">👤 ${d.personName}</div>
-    <div style="font-size:11px;color:var(--green);margin-top:4px;">✓ إجمالي: ${fmtMoney(dTotal(d))}</div>
-    <div style="font-size:11px;color:var(--muted);margin-top:2px;">📅 ${fmtDate(d.dateFrom)} ← ${fmtDate(d.dateTo)}</div>
-    <button class="btn btn-sm" style="margin-top:8px;width:100%;justify-content:center;background:var(--blue-l);border:1px solid var(--blue-b)!important;color:var(--blue);gap:6px;" 
-      onclick="unarchiveDealFromModal('${d._pid}','${d.id}')">
-      <i class="fa-solid fa-box-open"></i> استعادة
-    </button>
-  </div>`).join('');
-    const archiveList = document.getElementById('archiveList');
-  if(archiveList) {
-    archiveList.innerHTML = html;
-  }
-  openModal('modalArchive');
-}
-function togglePerson(pid) {
-  const el = document.getElementById(`content_${pid}`);
-  const isCurrentlyOpen = el.style.display !== 'none';
-  
-  document.querySelectorAll('[id^="content_"]').forEach(div => {
-    div.style.display = 'none';
-  });
-  
-  if (!isCurrentlyOpen) {
-    el.style.display = 'block';
-    setTimeout(() => {
-      const y = el.getBoundingClientRect().top + window.pageYOffset - 140;
-      window.scrollTo({ top: y, behavior: 'smooth' });
-    }, 150);
-  }
-}
-
-// ========== دوال إدارة الصفقات ==========
-function openAddDeal(pid) {
-  ctx = { mode:'add', pid };
-  document.getElementById('dealModalTitle').textContent = 'إضافة صفقة جديدة';
-  ['d_name','d_notes'].forEach(id=>document.getElementById(id).value='');
-  ['d_price','d_profit'].forEach(id=>document.getElementById(id).value='');
-  document.getElementById('d_count').value  = 1;
-  document.getElementById('d_months').value = 1;
-  document.getElementById('d_check_amount').value = '';
-  document.getElementById('d_price_all').value = '';
-  document.getElementById('d_profit_all').value = '';
-  document.getElementById('d_status').value = 'active';
-  document.getElementById('d_image').value  = '';
-  document.getElementById('d_img_preview').style.display = 'none';
-  document.getElementById('d_img_section').style.display = 'none';
-  document.getElementById('d_img_size_warn').style.display = 'none';
-  ctx.currentImage = null;
-  const today = new Date();
-  setDateSelects('d_from', today);
-  const end = new Date(today);
-  end.setMonth(end.getMonth()+1);
-  setDateSelects('d_to', end);
-  previewDeal();
-  openModal('modalDeal');
-}
-
-function openEditDeal(pid, did) {
-  const p = persons.find(x=>x.id===pid);
-  const d = p.deals.find(x=>x.id===did);
-  ctx = { mode:'edit', pid, did };
-  document.getElementById('dealModalTitle').textContent = 'تعديل الصفقة';
-  document.getElementById('d_name').value   = d.deviceName||'';
-  document.getElementById('d_count').value  = d.deviceCount||1;
-  document.getElementById('d_price').value  = d.devicePrice||'';
-  document.getElementById('d_profit').value = d.profit||'';
-  document.getElementById('d_months').value = d.months || monthsBetween(d.dateFrom,d.dateTo) || 1;
-  document.getElementById('d_check_amount').value = d.checkAmount||'';
-  document.getElementById('d_status').value = d.status||'active';
-  document.getElementById('d_notes').value  = d.notes||'';
-  ctx.currentImage = d.image||null;
-  document.getElementById('d_img_section').style.display = d.image ? 'block':'none';
-  document.getElementById('d_img_preview').style.display = 'none';
-  document.getElementById('d_phone').value = d.phone || '';
-  document.getElementById('d_img_size_warn').style.display = 'none';
-  document.getElementById('d_image').value  = '';
-  if(d.dateFrom) setDateSelects('d_from', new Date(d.dateFrom));
-  if(d.dateTo)   setDateSelects('d_to',   new Date(d.dateTo));
-  previewDeal();
-  openModal('modalDeal');
-}
-
-function setDateSelects(prefix, date) {
-  document.getElementById(prefix+'_d').value = date.getDate();
-  document.getElementById(prefix+'_m').value = date.getMonth()+1;
-  document.getElementById(prefix+'_y').value = date.getFullYear();
-  const preview = document.getElementById(prefix+'_preview');
-  if(preview) preview.textContent = fmtDate(date.toISOString().split('T')[0]);
-}
-
-function getDateFromSelects(prefix) {
-  const d=document.getElementById(prefix+'_d').value;
-  const m=document.getElementById(prefix+'_m').value;
-  const y=document.getElementById(prefix+'_y').value;
-  if(!d||!m||!y) return '';
-  return `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-}
-
-function autoSetEndDate() {
-  const from   = getDateFromSelects('d_from');
-  const months = parseFloat(document.getElementById('d_months').value)||1;
-  if(from) {
-    const d = new Date(from);
-    d.setMonth(d.getMonth()+months);
-    setDateSelects('d_to', d);
-    previewDeal();
-  }
-}
-
-function previewDeal() {
-  const cnt     = Math.max(1, Number(document.getElementById('d_count').value || 1));
-  const price   = Number(document.getElementById('d_price').value || 0);
-  const profit  = Number(document.getElementById('d_profit').value || 0);
-  const months  = Math.max(1, parseFloat(document.getElementById('d_months').value) || 1);
-  const from    = getDateFromSelects('d_from');
-  const to      = getDateFromSelects('d_to');
-
-  const priceAll   = price * cnt;
-  const profitAll  = profit * cnt;
-  const total      = priceAll + profitAll;
-
-  const installment    = total / months;
-  const monthlyProfit  = profitAll / months;
-  const roi            = priceAll > 0 ? (profitAll / priceAll) * 100 : 0;
-  const sadaqa         = profitAll * 0.01;
-
-  const dPriceAll  = document.getElementById('d_price_all');
-  const dProfitAll = document.getElementById('d_profit_all');
-  const dCheckAmt  = document.getElementById('d_check_amount');
-  if (dPriceAll)  dPriceAll.value  = priceAll.toFixed(2);
-  if (dProfitAll) dProfitAll.value = profitAll.toFixed(2);
-  if (dCheckAmt)  dCheckAmt.value  = total.toFixed(2);
-
-  updatePreviewElement('pv_cost',    fmtMoney(priceAll));
-  updatePreviewElement('pv_total',   fmtMoney(total), 'var(--blue)');
-  updatePreviewElement('pv_profit',  fmtMoney(profitAll), 'var(--green)');
-  updatePreviewElement('pv_monthly', `<b style="color:var(--blue)">${fmtMoney(installment)}</b> <small>(قسط)</small>`, null, 'html');
-  updatePreviewElement('pv_roi',     fmtPct(roi), 'var(--blue)');
-  updatePreviewElement('pv_pct',     fmtMoney(monthlyProfit), 'var(--blue)');
-  updatePreviewElement('pv_expire',  to ? fmtDate(to) : '—');
-  updatePreviewElement('pv_sadaqa',  fmtMoney(sadaqa), 'var(--gold)');
-
-  const fromPrev = document.getElementById('d_from_preview');
-  const toPrev   = document.getElementById('d_to_preview');
-  if (fromPrev) fromPrev.textContent = from ? fmtDate(from) : '';
-  if (toPrev)   toPrev.textContent   = to   ? fmtDate(to)   : '';
-}
-
-function updatePreviewElement(id, content, color = null, type = 'text') {
-  const el = document.getElementById(id);
-  if (!el) return;
-  if (type === 'html') {
-    el.innerHTML = content;
-  } else {
-    el.textContent = content;
-  }
-  if (color) el.style.color = color;
-}
-
-function handleImageUpload() {
-  const file    = document.getElementById('d_image').files[0];
-  const preview = document.getElementById('d_img_preview');
-  const warn    = document.getElementById('d_img_size_warn');
-
-  if (!file) {
-    preview.style.display = 'none';
-    warn.style.display    = 'none';
-    return;
-  }
-
-  const maxSize = 10 * 1024 * 1024;
-  warn.style.display = file.size > maxSize ? 'block' : 'none';
-
-  const reader = new FileReader();
-  reader.onload = e => {
-    const img = new Image();
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      const MAX = 500;
-      let w = img.width, h = img.height;
-      if(w > MAX) { h = h * MAX / w; w = MAX; }
-      canvas.width = w; canvas.height = h;
-      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-      const compressed = canvas.toDataURL('image/jpeg', 0.6);
-      preview.src = compressed;
-      preview.style.display = 'block';
-      ctx.currentImage = compressed;
-    };
-    img.src = e.target.result;
-  };
-  reader.readAsDataURL(file);
-}
-
-function viewDealImage() {
-  if (ctx.currentImage) {
-    document.getElementById('fullDealImage').src = ctx.currentImage;
-    openModal('modalImageView');
-  }
-}
-
-function deleteDealImage() {
-  showConfirm('حذف صورة الشيك؟', 'لن تتمكن من استعادتها', () => {
-    ctx.currentImage = null;
-    document.getElementById('d_img_section').style.display = 'none';
-    document.getElementById('d_image').value = '';
-    document.getElementById('d_img_preview').style.display = 'none';
-    document.getElementById('d_img_size_warn').style.display = 'none';
-  });
-}
-
-function saveDeal() {
-  const name        = document.getElementById('d_name').value.trim();
-  const count       = Number(document.getElementById('d_count').value || 1);
-  const price       = Number(document.getElementById('d_price').value || 0);
-  const profit      = Number(document.getElementById('d_profit').value || 0);
-  const months      = parseFloat(document.getElementById('d_months').value) || 1;
-  const dateFrom    = getDateFromSelects('d_from');
-  const dateTo      = getDateFromSelects('d_to');
-  const checkAmount = parseFloat(document.getElementById('d_check_amount').value) || (price * count + profit);
-  const status      = document.getElementById('d_status').value;
-  const notes       = document.getElementById('d_notes').value.trim();
-  const image       = ctx.currentImage || null;
-  const phone       = document.getElementById('d_phone')?.value?.trim() || '';
-
-  const deal = {
-    id: ctx.mode === 'edit' ? ctx.did : genId(),
-    deviceName:  name,
-    deviceCount: count,
-    devicePrice: price,
-    profit,
-    dateFrom,
-    dateTo,
-    months,
-    checkAmount,
-    status,
-    notes,
-    image,
-    phone,
-    payments: ctx.mode === 'edit'
-      ? (persons.find(x => x.id === ctx.pid).deals.find(x => x.id === ctx.did).payments || [])
-      : []
-  };
-
-  const p = persons.find(x => x.id === ctx.pid);
-  if (ctx.mode === 'add') {
-    p.deals.push(deal);
-    showToast('تمت إضافة الصفقة بنجاح', 'success', 3000, '<i class="fa-solid fa-file-circle-plus"></i>');
-  } else {
-    const idx = p.deals.findIndex(x => x.id === ctx.did);
-    p.deals[idx] = deal;
-    showToast('تم تعديل الصفقة بنجاح', 'success', 3000, '<i class="fa-solid fa-file-pen"></i>');
-  }
-  closeModal('modalDeal');
-  render();
-  const _u = window._getUser?.();
-  if(_u && window._setDoc) {
-    const cleanData = JSON.parse(JSON.stringify(persons));
-    window._setDoc(window._doc(window._db, "users_data", _u.uid), { my_list: cleanData })
-      .then(() => {
-        showToast('☁️ تم رفع البيانات إلى السحابة', 'success', 2000, '<i class="fa-solid fa-cloud-arrow-up"></i>');
-      })
-      .catch(() => {
-        showToast('❌ فشل رفع البيانات', 'error', 2000, '<i class="fa-solid fa-cloud-bolt"></i>');
-      });
-  }
-}
-
-// ========== دوال إدارة الدفعات ==========
-function openAddPayment(pid, did) {
-  const p   = persons.find(x=>x.id===pid);
-  const d   = p.deals.find(x=>x.id===did);
-  const total = dTotal(d);
-  const rem   = Math.max(0, total - dPaid(d));
-  
-  if(rem <= 0) { 
-    showToast('هذه الصفقة مكتملة — لا يمكن إضافة دفعات', 'error', 3000, '<i class="fa-solid fa-circle-check"></i>'); 
-    return; 
-  }
-  
-  ctx = { pid, did, maxPay: rem };
-  document.getElementById('p_date').value   = new Date().toISOString().split('T')[0];
-  document.getElementById('p_amount').value = '';
-  document.getElementById('p_amount').max   = rem.toFixed(2);
-  document.getElementById('p_note').value   = '';
-  document.getElementById('p_hint').textContent = 'المتبقي: ' + fmtMoney(rem);
-  openModal('modalPayment');
-  setTimeout(()=>document.getElementById('p_amount').focus(),80);
-}
-
-function savePayment() {
-  const amount = Number(document.getElementById('p_amount').value);
-  if(!amount) return;
-  
-  if(ctx.maxPay !== undefined && amount > ctx.maxPay + 0.01) {
-    showToast('المبلغ المدخل أكبر من المتبقي (' + fmtMoney(ctx.maxPay) + ')', 'error', 3000, '<i class="fa-solid fa-circle-exclamation"></i>');
-    return;
-  }
-  
-  const pmt = {
-    id:     genId(),
-    date:   document.getElementById('p_date').value,
-    amount,
-    note:   document.getElementById('p_note').value.trim()
-  };
-  
-  const deal = persons.find(x=>x.id===ctx.pid).deals.find(x=>x.id===ctx.did);
-  deal.payments.push(pmt);
-  openDetails.add(ctx.did);
-  closeModal('modalPayment');
-  showToast(`تم تسجيل دفعة ${fmtMoney(amount)}`, 'success', 3000, '<i class="fa-solid fa-money-bill-wave"></i>');
-  render();
-  const _u = window._getUser?.();
-  if(_u && window._setDoc) {
-    const cleanData = JSON.parse(JSON.stringify(persons));
-    window._setDoc(window._doc(window._db, "users_data", _u.uid), { my_list: cleanData }).catch(()=>{});
-  }
-}
-
-function deletePayment(pid, did, pmid) {
-  const deal = findDealById(did);
-  const payment = deal ? (deal.payments||[]).find(p => p.id === pmid) : null;
-  const amount = payment ? payment.amount : 0;
-  showConfirm(
-    `حذف دفعة ${fmtMoney(amount)}؟`,
-    'سيتم حذف هذه الدفعة من السجل',
-    () => {
-      deal.payments = deal.payments.filter(x => x.id !== pmid);
-      openDetails.add(did);
-      showToast('تم حذف الدفعة', 'error', 3000, '<i class="fa-solid fa-money-bill-slash"></i>');
-      render();
-      setTimeout(() => {
-        const el = document.getElementById('det_' + did);
-        if(el) el.classList.add('open');
-      }, 100);
-    }
-  );
-}
-
-// ========== تبديل عرض تفاصيل الصفقة ==========
-function toggleDeal(uid) {
-  if(openDetails.has(uid)) {
-    openDetails.delete(uid);
-  } else {
-    openDetails.clear();
-    openDetails.add(uid);
-  }
-  document.querySelectorAll('.deal-detail').forEach(el => {
-    const id = el.id.replace('det_', '');
-    el.classList.toggle('open', openDetails.has(id));
-  });
-  document.querySelectorAll('.deal-chev').forEach(el => {
-    const id = el.id.replace('chev_', '');
-    el.classList.toggle('open', openDetails.has(id));
-  });
-  if(openDetails.size > 0) {
-    const openId = [...openDetails][0];
-    for(let p of persons) {
-      if(p.deals.some(d => d.id === openId)) {
-        const el = document.getElementById('content_' + p.id);
-        if(el) {
-          el.style.display = 'block';
-          setTimeout(() => {
-            const y = el.getBoundingClientRect().top + window.pageYOffset - 140;
-            window.scrollTo({ top: y, behavior: 'smooth' });
-          }, 150);
-        }
-        break;
-      }
-    }
-  }
-}
-
-// ========== دوال التبويب والبحث ==========
-function setTab(t) {
-  activeTab = t;
-  document.querySelectorAll('.tab').forEach(el=>el.classList.toggle('active', el.dataset.t===t));
-  render();
-}
-
-function onSearch(v) {
-  searchQ = v;
-  document.getElementById('searchClear').style.display = v ? 'flex':'none';
-  render();
-}
-
-function clearSearch() {
-  searchQ = '';
-  document.getElementById('searchInput').value = '';
-  document.getElementById('searchClear').style.display = 'none';
-  render();
-}
+function setTab(t) { activeTab = t; document.querySelectorAll('.tab').forEach(el=>el.classList.toggle('active', el.dataset.t===t)); render(); }
+function onSearch(v) { searchQ = v; document.getElementById('searchClear').style.display = v ? 'flex':'none'; render(); }
+function clearSearch() { searchQ = ''; document.getElementById('searchInput').value = ''; document.getElementById('searchClear').style.display = 'none'; render(); }
 
 function getFiltered() {
   const q = searchQ.trim().toLocaleLowerCase('ar');
   return persons.map(p => {
-  let deals = sortDeals((p.deals||[]).filter(d => !d.archived));
-
+    let deals = sortDeals((p.deals||[]).filter(d => !d.archived));
     if(activeTab==='late')   deals = deals.filter(d=>daysLate(d)>0);
     else if(activeTab==='active') deals = deals.filter(d=>!isDone(d)&&daysLate(d)===0);
     else if(activeTab==='done')   deals = deals.filter(d=>isDone(d));
-
     const nameMatch = p.name.toLocaleLowerCase('ar').includes(q);
     const dealMatch = deals.filter(d=>(d.deviceName||'').toLocaleLowerCase('ar').includes(q));
-
-    if(q) {
-      if(nameMatch) {
-        if(deals.length === 0) return null;
-        return {...p, deals};
-      } else {
-        if(dealMatch.length === 0) return null;
-        return {...p, deals: dealMatch};
-      }
-    }
-
+    if(q) { if(nameMatch) { if(deals.length === 0) return null; return {...p, deals}; } else { if(dealMatch.length === 0) return null; return {...p, deals: dealMatch}; } }
     if(activeTab !== 'all' && deals.length === 0) return null;
-
     return {...p, deals};
   }).filter(Boolean);
 }
@@ -678,6 +139,175 @@ function countTab(t) {
   return n;
 }
 
+// ========== إدارة الأشخاص ==========
+function openAddPerson() { ctx = { personMode: 'add' }; document.getElementById('personModalTitle').innerHTML = '<i class="fa-solid fa-user-plus"></i> إضافة شخص جديد'; document.getElementById('newPersonName').value = ''; openModal('modalPerson'); setTimeout(()=>document.getElementById('newPersonName').focus(),80); }
+function openEditPerson(pid) { const p = persons.find(x=>x.id===pid); ctx = { personMode: 'edit', pid }; document.getElementById('personModalTitle').innerHTML = '<i class="fa-solid fa-user-pen"></i> تعديل اسم الشخص'; document.getElementById('newPersonName').value = p.name; openModal('modalPerson'); setTimeout(()=>document.getElementById('newPersonName').focus(),80); }
+
+function savePersonModal() {
+  const name = document.getElementById('newPersonName').value.trim();
+  if(!name) return;
+  if(ctx.personMode === 'edit') { persons.find(x=>x.id===ctx.pid).name = name; showToast('تم تعديل الاسم بنجاح', 'success', 3000, '<i class="fa-solid fa-user-pen"></i>'); }
+  else { persons.push({id:genId(), name, deals:[]}); showToast('تمت إضافة الشخص بنجاح', 'success', 3000, '<i class="fa-solid fa-user-plus"></i>'); }
+  closeModal('modalPerson'); render();
+  const _u = window._getUser?.();
+  if(_u && window._setDoc) { const cleanData = JSON.parse(JSON.stringify(persons)); window._setDoc(window._doc(window._db, "users_data", _u.uid), { my_list: cleanData }).catch(()=>{}); }
+}
+
+function deletePerson(pid) { const p = persons.find(x=>x.id===pid); showConfirm(`حذف "${p.name}" وجميع صفقاته؟`, `سيتم حذف ${p.deals.length} صفقة نهائياً`, () => { persons = persons.filter(x=>x.id!==pid); if(window._syncData) window._syncData(); showToast('تم حذف الشخص وصفقاته', 'error', 3000, '<i class="fa-solid fa-user-slash"></i>'); render(); }); }
+function deleteDeal(pid, did) { const p = persons.find(x => x.id === pid); const deal = p.deals.find(x => x.id === did); const name = deal.deviceName || 'بدون اسم'; showConfirm(`حذف صفقة "${name}"؟`, `سيتم حذف الصفقة وكل دفعاتها نهائياً`, () => { p.deals = p.deals.filter(x => x.id !== did); if(window._syncData) window._syncData(); showToast('تم حذف الصفقة', 'error', 3000, '<i class="fa-solid fa-file-circle-xmark"></i>'); render(); }); }
+
+function archiveDeal(pid, did) { const p = persons.find(x => x.id === pid); const deal = p.deals.find(x => x.id === did); deal.archived = true; showToast('تمت أرشفة الصفقة 📁', 'success', 3000, '<i class="fa-solid fa-box-archive"></i>'); render(); const _u = window._getUser?.(); if(_u && window._setDoc) { const cleanData = JSON.parse(JSON.stringify(persons)); window._setDoc(window._doc(window._db, "users_data", _u.uid), { my_list: cleanData }).catch(()=>{}); } }
+function unarchiveDeal(pid, did) { const p = persons.find(x => x.id === pid); const deal = p.deals.find(x => x.id === did); deal.archived = false; showToast('تمت استعادة الصفقة ✅', 'success', 3000, '<i class="fa-solid fa-box-open"></i>'); render(); const _u = window._getUser?.(); if(_u && window._setDoc) { const cleanData = JSON.parse(JSON.stringify(persons)); window._setDoc(window._doc(window._db, "users_data", _u.uid), { my_list: cleanData }).catch(()=>{}); } }
+function unarchiveDealFromModal(pid, did) { unarchiveDeal(pid, did); openArchive(); }
+
+function openArchive() {
+  const archived = persons.flatMap(p => (p.deals||[]).filter(d => d.archived).map(d => ({...d, personName: p.name || 'بدون اسم', _pid: p.id})));
+  const html = archived.length === 0 ? `<div style="text-align:center;padding:40px;color:#8b7355"><i class="fa-solid fa-box-open" style="font-size:40px;margin-bottom:12px;display:block;opacity:0.5"></i>لا توجد صفقات مؤرشفة</div>` : archived.map(d => `<div style="background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:10px;"><div style="font-weight:800;font-size:14px;">${d.deviceName || 'بدون اسم'}</div><div style="font-size:11px;color:#8b7355;margin-top:4px;"><i class="fa-solid fa-user" style="margin-left:4px"></i>${d.personName}</div><div style="font-size:11px;color:#059669;margin-top:4px;"><i class="fa-solid fa-sack-dollar" style="margin-left:4px"></i>إجمالي: ${fmtMoney(dTotal(d))}</div><div style="font-size:11px;color:#8b7355;margin-top:2px;"><i class="fa-solid fa-calendar-days" style="margin-left:4px"></i>${fmtDate(d.dateFrom)} ← ${fmtDate(d.dateTo)}</div><button class="btn btn-sm" style="margin-top:8px;width:100%;justify-content:center;background:rgba(30,58,95,0.08);border:1px solid rgba(30,58,95,0.2)!important;color:#1E3A5F;gap:6px;" onclick="unarchiveDealFromModal('${d._pid}','${d.id}')"><i class="fa-solid fa-box-open"></i> استعادة</button></div>`).join('');
+  const archiveList = document.getElementById('archiveList');
+  if(archiveList) { archiveList.innerHTML = html; }
+  openModal('modalArchive');
+}
+
+function togglePerson(pid) {
+  const el = document.getElementById(`content_${pid}`);
+  const isCurrentlyOpen = el.style.display !== 'none';
+  document.querySelectorAll('[id^="content_"]').forEach(div => { div.style.display = 'none'; });
+  if(!isCurrentlyOpen) { el.style.display = 'block'; setTimeout(() => { const y = el.getBoundingClientRect().top + window.pageYOffset - 140; window.scrollTo({ top: y, behavior: 'smooth' }); }, 150); }
+}
+
+// ========== إدارة الصفقات ==========
+function openAddDeal(pid) {
+  ctx = { mode:'add', pid };
+  document.getElementById('dealModalTitle').textContent = 'إضافة صفقة جديدة';
+  ['d_name','d_notes'].forEach(id=>document.getElementById(id).value='');
+  ['d_price','d_profit'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('d_count').value=1; document.getElementById('d_months').value=1;
+  document.getElementById('d_check_amount').value=''; document.getElementById('d_price_all').value=''; document.getElementById('d_profit_all').value='';
+  document.getElementById('d_status').value='active'; document.getElementById('d_image').value='';
+  document.getElementById('d_img_preview').style.display='none'; document.getElementById('d_img_section').style.display='none'; document.getElementById('d_img_size_warn').style.display='none';
+  document.getElementById('d_hasPartner').checked=false; document.getElementById('partnerFields').style.display='none';
+  document.getElementById('d_partnerName').value=''; document.getElementById('d_partnerType').value='amount'; document.getElementById('d_partnerValue').value=''; document.getElementById('d_partnerPaid').value='';
+  document.getElementById('partnerValueLabel').textContent='💰 المبلغ (ر.ق)'; document.getElementById('partnerSharePreview').textContent=''; document.getElementById('partnerValueField').style.display='block';
+  ctx.currentImage=null;
+  const today=new Date(); setDateSelects('d_from',today); const end=new Date(today); end.setMonth(end.getMonth()+1); setDateSelects('d_to',end);
+  previewDeal(); openModal('modalDeal');
+}
+
+function openEditDeal(pid, did) {
+  const p=persons.find(x=>x.id===pid); const d=p.deals.find(x=>x.id===did);
+  ctx={ mode:'edit', pid, did };
+  document.getElementById('dealModalTitle').textContent='تعديل الصفقة';
+  document.getElementById('d_name').value=d.deviceName||''; document.getElementById('d_count').value=d.deviceCount||1;
+  document.getElementById('d_price').value=d.devicePrice||''; document.getElementById('d_profit').value=d.profit||'';
+  document.getElementById('d_months').value=d.months||monthsBetween(d.dateFrom,d.dateTo)||1;
+  document.getElementById('d_check_amount').value=d.checkAmount||''; document.getElementById('d_status').value=d.status||'active'; document.getElementById('d_notes').value=d.notes||'';
+  ctx.currentImage=d.image||null; document.getElementById('d_img_section').style.display=d.image?'block':'none'; document.getElementById('d_img_preview').style.display='none';
+  document.getElementById('d_phone').value=d.phone||''; document.getElementById('d_img_size_warn').style.display='none'; document.getElementById('d_image').value='';
+  document.getElementById('d_hasPartner').checked=d.hasPartner||false; document.getElementById('partnerFields').style.display=d.hasPartner?'block':'none';
+  document.getElementById('d_partnerName').value=d.partnerName||''; document.getElementById('d_partnerType').value=d.partnerType||'amount';
+  document.getElementById('d_partnerValue').value=d.partnerValue||''; document.getElementById('d_partnerPaid').value=d.partnerPaid||'';
+  togglePartnerValueLabel();
+  if(d.dateFrom) setDateSelects('d_from',new Date(d.dateFrom)); if(d.dateTo) setDateSelects('d_to',new Date(d.dateTo));
+  previewDeal(); openModal('modalDeal');
+}
+
+window.togglePartnerFields = function() { const checked = document.getElementById('d_hasPartner').checked; document.getElementById('partnerFields').style.display = checked ? 'block' : 'none'; previewDeal(); };
+window.togglePartnerValueLabel = function() { const type = document.getElementById('d_partnerType').value; const label = document.getElementById('partnerValueLabel'); const valueField = document.getElementById('partnerValueField'); if(type === 'half') { valueField.style.display = 'none'; } else if(type === 'amount') { valueField.style.display = 'block'; label.textContent = '💰 المبلغ (ر.ق)'; } else if(type === 'percent') { valueField.style.display = 'block'; label.textContent = '📊 النسبة (%)'; } previewDeal(); };
+
+function setDateSelects(prefix, date) { document.getElementById(prefix+'_d').value=date.getDate(); document.getElementById(prefix+'_m').value=date.getMonth()+1; document.getElementById(prefix+'_y').value=date.getFullYear(); const preview=document.getElementById(prefix+'_preview'); if(preview) preview.textContent=fmtDate(date.toISOString().split('T')[0]); }
+function getDateFromSelects(prefix) { const d=document.getElementById(prefix+'_d').value; const m=document.getElementById(prefix+'_m').value; const y=document.getElementById(prefix+'_y').value; if(!d||!m||!y) return ''; return `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`; }
+function autoSetEndDate() { const from=getDateFromSelects('d_from'); const months=parseFloat(document.getElementById('d_months').value)||1; if(from){const d=new Date(from); d.setMonth(d.getMonth()+months); setDateSelects('d_to',d); previewDeal();} }
+
+function previewDeal() {
+  const cnt=Math.max(1,Number(document.getElementById('d_count').value||1));
+  const price=Number(document.getElementById('d_price').value||0);
+  const profit=Number(document.getElementById('d_profit').value||0);
+  const months=Math.max(1,parseFloat(document.getElementById('d_months').value)||1);
+  const from=getDateFromSelects('d_from'); const to=getDateFromSelects('d_to');
+  const priceAll=price*cnt; const profitAll=profit*cnt; const total=priceAll+profitAll;
+  const installment=total/months; const monthlyProfit=profitAll/months;
+  const roi=priceAll>0?(profitAll/priceAll)*100:0;
+  const hasPartner=document.getElementById('d_hasPartner').checked;
+  const partnerType=document.getElementById('d_partnerType').value;
+  const partnerValue=Number(document.getElementById('d_partnerValue').value||0);
+  let partnerShare=0;
+  if(hasPartner){if(partnerType==='half')partnerShare=profitAll/2;else if(partnerType==='amount')partnerShare=Math.min(partnerValue,profitAll);else if(partnerType==='percent')partnerShare=profitAll*(partnerValue/100);}
+  const netYourProfit=profitAll-partnerShare; const sadaqa=netYourProfit*0.01;
+  const dPriceAll=document.getElementById('d_price_all'); const dProfitAll=document.getElementById('d_profit_all'); const dCheckAmt=document.getElementById('d_check_amount');
+  if(dPriceAll)dPriceAll.value=priceAll.toFixed(2); if(dProfitAll)dProfitAll.value=profitAll.toFixed(2); if(dCheckAmt)dCheckAmt.value=total.toFixed(2);
+  updatePreviewElement('pv_cost',fmtMoney(priceAll),'#1a1a1a');
+  updatePreviewElement('pv_total',fmtMoney(total),'#1a1a1a');
+  updatePreviewElement('pv_profit',fmtMoney(netYourProfit),'#059669');
+  updatePreviewElement('pv_monthly',`<b style="color:#1a1a1a">${fmtMoney(installment)}</b> <small>(قسط)</small>`,null,'html');
+  updatePreviewElement('pv_roi',fmtPct(roi),'#1a1a1a');
+  updatePreviewElement('pv_pct',fmtMoney(monthlyProfit),'#1a1a1a');
+  updatePreviewElement('pv_expire',to?fmtDate(to):'—','#1a1a1a');
+  updatePreviewElement('pv_sadaqa',fmtMoney(sadaqa),'#059669');
+  const pvPartner=document.getElementById('pv_partner'); const pvPartnerVal=document.getElementById('pv_partner_val');
+  if(pvPartner&&pvPartnerVal){if(hasPartner&&partnerShare>0){pvPartner.style.display='flex';pvPartnerVal.textContent=fmtMoney(partnerShare);}else{pvPartner.style.display='none';}}
+  const partnerPreview=document.getElementById('partnerSharePreview');
+  if(partnerPreview){if(hasPartner&&partnerShare>0){partnerPreview.textContent=`💼 نصيب الشريك: ${fmtMoney(partnerShare)} | الصدقة: ${fmtMoney(sadaqa)}`;}else{partnerPreview.textContent='';}}
+  const fromPrev=document.getElementById('d_from_preview'); const toPrev=document.getElementById('d_to_preview');
+  if(fromPrev)fromPrev.textContent=from?fmtDate(from):''; if(toPrev)toPrev.textContent=to?fmtDate(to):'';
+}
+
+function updatePreviewElement(id, content, color = null, type = 'text') { const el = document.getElementById(id); if(!el) return; if(type==='html'){el.innerHTML=content;}else{el.textContent=content;} if(color) el.style.color=color; }
+
+function handleImageUpload() {
+  const file=document.getElementById('d_image').files[0]; const preview=document.getElementById('d_img_preview'); const warn=document.getElementById('d_img_size_warn');
+  if(!file){preview.style.display='none';warn.style.display='none';return;}
+  const maxSize=10*1024*1024; warn.style.display=file.size>maxSize?'block':'none';
+  const reader=new FileReader();
+  reader.onload=e=>{const img=new Image(); img.onload=()=>{const canvas=document.createElement('canvas'); const MAX=500; let w=img.width,h=img.height; if(w>MAX){h=h*MAX/w;w=MAX;} canvas.width=w;canvas.height=h;canvas.getContext('2d').drawImage(img,0,0,w,h); const compressed=canvas.toDataURL('image/jpeg',0.6); preview.src=compressed;preview.style.display='block';ctx.currentImage=compressed;};img.src=e.target.result;};
+  reader.readAsDataURL(file);
+}
+
+function viewDealImage(){if(ctx.currentImage){document.getElementById('fullDealImage').src=ctx.currentImage;openModal('modalImageView');}}
+function deleteDealImage(){showConfirm('حذف صورة الشيك؟','لن تتمكن من استعادتها',()=>{ctx.currentImage=null;document.getElementById('d_img_section').style.display='none';document.getElementById('d_image').value='';document.getElementById('d_img_preview').style.display='none';document.getElementById('d_img_size_warn').style.display='none';});}
+
+function saveDeal() {
+  const name=document.getElementById('d_name').value.trim(); const count=Number(document.getElementById('d_count').value||1);
+  const price=Number(document.getElementById('d_price').value||0); const profit=Number(document.getElementById('d_profit').value||0);
+  const months=parseFloat(document.getElementById('d_months').value)||1;
+  const dateFrom=getDateFromSelects('d_from'); const dateTo=getDateFromSelects('d_to');
+  const checkAmount=parseFloat(document.getElementById('d_check_amount').value)||(price*count+profit);
+  const status=document.getElementById('d_status').value; const notes=document.getElementById('d_notes').value.trim();
+  const image=ctx.currentImage||null; const phone=document.getElementById('d_phone')?.value?.trim()||'';
+  const hasPartner=document.getElementById('d_hasPartner').checked; const partnerName=document.getElementById('d_partnerName').value.trim();
+  const partnerType=document.getElementById('d_partnerType').value; const partnerValue=Number(document.getElementById('d_partnerValue').value||0);
+  const partnerPaid=Number(document.getElementById('d_partnerPaid').value||0);
+  const deal={id:ctx.mode==='edit'?ctx.did:genId(),deviceName:name,deviceCount:count,devicePrice:price,profit,dateFrom,dateTo,months,checkAmount,status,notes,image,phone,hasPartner,partnerName,partnerType,partnerValue,partnerPaid,payments:ctx.mode==='edit'?(persons.find(x=>x.id===ctx.pid).deals.find(x=>x.id===ctx.did).payments||[]):[]};
+  const p=persons.find(x=>x.id===ctx.pid);
+  if(ctx.mode==='add'){p.deals.push(deal);showToast('تمت إضافة الصفقة بنجاح','success',3000,'<i class="fa-solid fa-file-circle-plus"></i>');}
+  else{const idx=p.deals.findIndex(x=>x.id===ctx.did);p.deals[idx]=deal;showToast('تم تعديل الصفقة بنجاح','success',3000,'<i class="fa-solid fa-file-pen"></i>');}
+  closeModal('modalDeal');render();
+  const _u=window._getUser?.();
+  if(_u&&window._setDoc){const cleanData=JSON.parse(JSON.stringify(persons));window._setDoc(window._doc(window._db,"users_data",_u.uid),{my_list:cleanData}).then(()=>{showToast('☁️ تم رفع البيانات إلى السحابة','success',2000,'<i class="fa-solid fa-cloud-arrow-up"></i>');}).catch(()=>{showToast('❌ فشل رفع البيانات','error',2000,'<i class="fa-solid fa-cloud-bolt"></i>');});}
+}
+
+// ========== إدارة الدفعات ==========
+function openAddPayment(pid,did){const p=persons.find(x=>x.id===pid);const d=p.deals.find(x=>x.id===did);const total=dTotal(d);const rem=Math.max(0,total-dPaid(d));if(rem<=0){showToast('هذه الصفقة مكتملة — لا يمكن إضافة دفعات','error',3000,'<i class="fa-solid fa-circle-check"></i>');return;}ctx={pid,did,maxPay:rem};document.getElementById('p_date').value=new Date().toISOString().split('T')[0];document.getElementById('p_amount').value='';document.getElementById('p_amount').max=rem.toFixed(2);document.getElementById('p_note').value='';document.getElementById('p_hint').textContent='المتبقي: '+fmtMoney(rem);openModal('modalPayment');setTimeout(()=>document.getElementById('p_amount').focus(),80);}
+
+function savePayment(){
+  const amount=Number(document.getElementById('p_amount').value);if(!amount)return;
+  if(ctx.maxPay!==undefined&&amount>ctx.maxPay+0.01){showToast('المبلغ المدخل أكبر من المتبقي ('+fmtMoney(ctx.maxPay)+')','error',3000,'<i class="fa-solid fa-circle-exclamation"></i>');return;}
+  const pmt={id:genId(),date:document.getElementById('p_date').value,amount,note:document.getElementById('p_note').value.trim()};
+  const deal=persons.find(x=>x.id===ctx.pid).deals.find(x=>x.id===ctx.did);deal.payments.push(pmt);openDetails.add(ctx.did);
+  closeModal('modalPayment');showToast(`تم تسجيل دفعة ${fmtMoney(amount)}`,'success',3000,'<i class="fa-solid fa-money-bill-wave"></i>');render();
+  const _u=window._getUser?.();if(_u&&window._setDoc){const cleanData=JSON.parse(JSON.stringify(persons));window._setDoc(window._doc(window._db,"users_data",_u.uid),{my_list:cleanData}).catch(()=>{});}
+}
+
+function deletePayment(pid,did,pmid){
+  const deal=findDealById(did);const payment=deal?(deal.payments||[]).find(p=>p.id===pmid):null;const amount=payment?payment.amount:0;
+  showConfirm(`حذف دفعة ${fmtMoney(amount)}؟`,'سيتم حذف هذه الدفعة من السجل',()=>{deal.payments=deal.payments.filter(x=>x.id!==pmid);openDetails.add(did);showToast('تم حذف الدفعة','error',3000,'<i class="fa-solid fa-money-bill-slash"></i>');render();setTimeout(()=>{const el=document.getElementById('det_'+did);if(el)el.classList.add('open');},100);});
+}
+
+// ========== تبديل عرض التفاصيل ==========
+function toggleDeal(uid){if(openDetails.has(uid)){openDetails.delete(uid);}else{openDetails.clear();openDetails.add(uid);}document.querySelectorAll('.deal-detail').forEach(el=>{const id=el.id.replace('det_','');el.classList.toggle('open',openDetails.has(id));});document.querySelectorAll('.deal-chev').forEach(el=>{const id=el.id.replace('chev_','');el.classList.toggle('open',openDetails.has(id));});if(openDetails.size>0){const openId=[...openDetails][0];for(let p of persons){if(p.deals.some(d=>d.id===openId)){const el=document.getElementById('content_'+p.id);if(el){el.style.display='block';setTimeout(()=>{const y=el.getBoundingClientRect().top+window.pageYOffset-140;window.scrollTo({top:y,behavior:'smooth'});},150);}break;}}}}
+
+window.togglePartnerCard = function(uid){const card=document.getElementById('partnerCard_'+uid);const btnText=document.getElementById('partnerBtnText_'+uid);const chev=document.getElementById('partnerChev_'+uid);if(card.style.display==='none'||card.style.display===''){card.style.display='block';if(btnText)btnText.textContent='إخفاء الشريك';if(chev)chev.style.transform='rotate(180deg)';}else{card.style.display='none';if(btnText)btnText.textContent='إظهار الشريك';if(chev)chev.style.transform='rotate(0deg)';}};
+
+// ========== عرض البطاقات ==========
 function renderDealCard(deal, ci, pid, pci) {
   const color     = PALETTE[(pci+ci+1)%PALETTE.length];
   const cnt       = Math.max(1, Number(deal.deviceCount||1));
@@ -690,7 +320,6 @@ function renderDealCard(deal, ci, pid, pci) {
   const monthly   = total / months;
   const roi       = priceAll > 0 ? (profitAll / priceAll) * 100 : 0;
   const profitMonthly = profitAll / months;
-  const profitPct = total > 0 ? (profitAll / total) * 100 : 0;
   const paid      = dPaid(deal);
   const rem       = Math.max(0, total - paid);
   const pct       = total > 0 ? Math.min(100, (paid / total) * 100) : 0;
@@ -698,8 +327,14 @@ function renderDealCard(deal, ci, pid, pci) {
   const late      = daysLate(deal);
   const isLate    = late > 0 && !done;
   const uid       = deal.id;
-  const pgColor   = isLate ? 'var(--red)' : done ? 'var(--green)' : color;
+  const pgColor   = isLate ? '#DC2626' : done ? '#059669' : color;
   const isOpen    = openDetails.has(uid);
+
+  const partnerShare = calcPartnerShare(deal);
+  const netProfit = profitAll - partnerShare;
+  const sadaqa = netProfit * 0.01;
+  const partnerPaidAmount = Number(deal.partnerPaid || 0);
+  const partnerTotal = partnerPaidAmount + partnerShare;
 
   const statusBadge = done
     ? `<span class="status-badge sb-done">✓ مكتمل</span>`
@@ -713,52 +348,83 @@ function renderDealCard(deal, ci, pid, pci) {
       <div class="pmt-item">
         <div class="pmt-left">
           <div class="pmt-dot"></div>
-          <span class="pmt-amt">${fmtMoney(pm.amount)}</span>
+          <span class="pmt-amt" style="color:#059669">${fmtMoney(pm.amount)}</span>
           ${pm.note ? `<span class="pmt-note">· ${pm.note}</span>` : ''}
         </div>
         <div class="pmt-right">
           <span class="pmt-date">${fmtDate(pm.date)}</span>
-          <button class="pmt-del" onclick="deletePayment('${pid}','${uid}','${pm.id}')">✕</button>
+          <button class="pmt-del" onclick="deletePayment('${pid}','${uid}','${pm.id}')"><i class="fa-solid fa-xmark"></i></button>
         </div>
       </div>`).join('');
 
   const statsHtml = [
-    ['سعر الجهاز',    fmtMoney(price1),    '#2563EB'],
-    ['مجموع الأسعار', fmtMoney(priceAll),  '#2563EB'],
-    ['ربح الجهاز',    fmtMoney(profit1),   '#7C3AED'],
-    ['مجموع الأرباح', fmtMoney(profitAll), '#7C3AED'],
-    ['الإجمالي',      fmtMoney(total),     '#059669'],
-    ['القسط الشهري',  fmtMoney(monthly),   '#D97706'],
-    ['ROI',           fmtPct(roi),         '#DB2777'],
-    ['ربح/شهر',       fmtMoney(profitMonthly), '#059669'],
-    ['المدة',         months + ' شهر',     '#0891B2'],
-    ['العدد',         fmtNum(cnt),         '#475569'],
-  ].map(([l,v,c]) => `<div class="stat-tile"><div class="stat-lbl">${l}</div><div class="stat-val" style="color:${c}">${v}</div></div>`).join('');
+    ['سعر الجهاز',    fmtMoney(price1),    '#1a1a1a'],
+    ['مجموع الأسعار', fmtMoney(priceAll),  '#1a1a1a'],
+    ['ربح الجهاز',    fmtMoney(profit1),   '#1a1a1a'],
+    ['مجموع الأرباح', fmtMoney(profitAll), '#1a1a1a'],
+    ['الإجمالي',      fmtMoney(total),     '#1a1a1a'],
+    ['القسط الشهري',  fmtMoney(monthly),   '#1a1a1a'],
+    ['ROI',           fmtPct(roi),         '#1a1a1a'],
+    ['ربح/شهر',       fmtMoney(profitMonthly), '#1a1a1a'],
+    ['المدة',         months + ' شهر',     '#1a1a1a'],
+    ['العدد',         fmtNum(cnt),         '#1a1a1a'],
+  ].map(([l,v,c]) => `<div class="stat-tile" style="border:1px solid rgba(26,26,26,0.15)"><div class="stat-lbl">${l}</div><div class="stat-val" style="color:${c}">${v}</div></div>`).join('');
 
-  const dateFromBadge = deal.dateFrom
-    ? `<span class="date-badge"><i class="fa-solid fa-calendar-days"></i> ${fmtDate(deal.dateFrom)}</span>` : '';
-  const dateToBadge = deal.dateTo
-    ? `<span class="date-badge"><i class="fa-solid fa-hourglass-end"></i> ${fmtDate(deal.dateTo)}</span>` : '';
-  const whatsappBtn = deal.phone
-  ? `<button class="btn btn-whatsapp btn-sm" onclick="shareWhatsApp('${deal.phone}','${deal.deviceName || ''}','${deal.deviceName || ''}','${fmtMoney(rem)}')" title="واتساب" style="width:36px;height:36px;border-radius:8px;padding:0;justify-content:center;flex:0;min-width:36px"><i class="fa-brands fa-whatsapp" style="font-size:16px"></i></button>`
-  : '';
+  const partnerHtml = deal.hasPartner ? `
+<div style="margin-bottom:10px">
+  <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation(); togglePartnerCard('${uid}')" style="width:100%;justify-content:center;gap:6px;color:#1E3A5F;border:1px solid rgba(30,58,95,0.3)!important">
+    <i class="fa-solid fa-handshake"></i> <span id="partnerBtnText_${uid}">إظهار الشريك</span>
+    <i class="fa-solid fa-chevron-down" id="partnerChev_${uid}" style="font-size:10px;transition:transform 0.2s"></i>
+  </button>
+  <div id="partnerCard_${uid}" style="display:none;background:rgba(30,58,95,0.05);border:1px solid rgba(30,58,95,0.2);border-radius:14px;padding:14px;margin-top:8px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+      <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#1E3A5F,#3B82F6);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+        <i class="fa-solid fa-handshake" style="color:#fff;font-size:16px"></i>
+      </div>
+      <div style="flex:1">
+        <div style="font-weight:800;font-size:13px;color:#1E3A5F">${deal.partnerName || 'شريك'}</div>
+        <div style="font-size:10px;color:#5c3d2e;margin-top:2px">
+          ${deal.partnerType === 'half' ? '💎 نصف الربح' : deal.partnerType === 'amount' ? '💰 مبلغ ثابت' : '📊 نسبة ' + deal.partnerValue + '%'}
+        </div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:11px;margin-bottom:8px">
+      <div style="background:rgba(255,255,255,0.5);border:1px solid rgba(30,58,95,0.15);border-radius:10px;padding:10px;text-align:center">
+        <div style="color:#1E3A5F;margin-bottom:3px"><i class="fa-solid fa-money-bill-wave" style="margin-left:3px;color:#1E3A5F"></i>دفع الشريك</div>
+        <div style="font-weight:700;color:#1E3A5F;font-size:14px;font-family:'Inter',sans-serif">${fmtMoney(partnerPaidAmount)}</div>
+      </div>
+      <div style="background:rgba(255,255,255,0.5);border:1px solid rgba(30,58,95,0.15);border-radius:10px;padding:10px;text-align:center">
+        <div style="color:#1E3A5F;margin-bottom:3px"><i class="fa-solid fa-chart-pie" style="margin-left:3px;color:#1E3A5F"></i>نصيبه من الربح</div>
+        <div style="font-weight:700;color:#1E3A5F;font-size:14px;font-family:'Inter',sans-serif">${fmtMoney(partnerShare)}</div>
+      </div>
+    </div>
+    <div style="background:rgba(5,150,105,0.08);border:1px solid rgba(5,150,105,0.2);border-radius:10px;padding:10px;text-align:center;margin-bottom:10px">
+      <div style="font-size:10px;color:#059669;margin-bottom:3px"><i class="fa-solid fa-briefcase" style="margin-left:3px;color:#059669"></i>صافي ربحك بعد خصم الشريك</div>
+      <div style="font-weight:800;color:#059669;font-size:15px;font-family:'Inter',sans-serif">${fmtMoney(netProfit)}</div>
+    </div>
+    <div style="background:linear-gradient(135deg,#1E3A5F,#3B82F6);color:#fff;border-radius:10px;padding:12px;text-align:center;font-weight:800;font-size:14px;box-shadow:0 4px 15px rgba(30,58,95,0.4)">
+      <span><i class="fa-solid fa-sack-dollar" style="margin-left:4px"></i>إجمالي مستحقات الشريك</span>
+      <div style="font-size:20px;margin-top:4px">${fmtMoney(partnerTotal)}</div>
+    </div>
+  </div>
+</div>` : '';
+
+  const dateFromBadge = deal.dateFrom ? `<span class="date-badge"><i class="fa-solid fa-calendar-days"></i> ${fmtDate(deal.dateFrom)}</span>` : '';
+  const dateToBadge = deal.dateTo ? `<span class="date-badge"><i class="fa-solid fa-hourglass-end"></i> ${fmtDate(deal.dateTo)}</span>` : '';
+  const whatsappBtn = deal.phone ? `<button class="btn btn-whatsapp btn-sm" onclick="shareWhatsApp('${deal.phone}','${deal.deviceName || ''}','${deal.deviceName || ''}','${fmtMoney(rem)}')" title="واتساب" style="width:36px;height:36px;border-radius:8px;padding:0;justify-content:center;flex:0;min-width:36px"><i class="fa-brands fa-whatsapp" style="font-size:16px"></i></button>` : '';
   const payBtn = done
-    ? `<button class="btn btn-sm" style="flex:1;justify-content:center;background:var(--green-l);border:1px solid var(--green-b)!important;color:var(--green);cursor:default" disabled>✓ المبلغ مكتمل</button>`
-    : `<button class="btn btn-pay btn-sm" onclick="openAddPayment('${pid}','${uid}')">+ دفعة جديدة</button>`;
+    ? `<button class="btn btn-sm" style="flex:1;justify-content:center;background:rgba(5,150,105,0.08);border:1px solid rgba(5,150,105,0.2)!important;color:#059669;cursor:default" disabled><i class="fa-solid fa-circle-check" style="margin-left:4px"></i>المبلغ مكتمل</button>`
+    : `<button class="btn btn-pay btn-sm" onclick="openAddPayment('${pid}','${uid}')"><i class="fa-solid fa-plus" style="margin-left:4px"></i>دفعة جديدة</button>`;
 
-const archiveBtn = isFullyDone(deal) && !deal.archived
-  ? `<button class="btn btn-sm" style="width:100%;justify-content:center;background:var(--amber-l);border:1px solid var(--amber-b)!important;color:var(--amber);gap:6px;" onclick="archiveDeal('${pid}','${uid}')">
-      <i class="fa-solid fa-box-archive"></i> نقل إلى الأرشيف
-    </button>`
-  : deal.archived
-  ? `<button class="btn btn-sm" style="width:100%;justify-content:center;background:var(--panel);border:1px solid var(--border)!important;color:var(--muted);gap:6px;" onclick="unarchiveDeal('${pid}','${uid}')">
-      <i class="fa-solid fa-box-open"></i> استعادة من الأرشيف
-    </button>`
-  : '';
+  const archiveBtn = isFullyDone(deal) && !deal.archived
+    ? `<button class="btn btn-sm" style="width:100%;justify-content:center;background:rgba(5,150,105,0.1);border:1px solid rgba(5,150,105,0.2)!important;color:#059669;gap:6px;" onclick="archiveDeal('${pid}','${uid}')"><i class="fa-solid fa-box-archive"></i> نقل إلى الأرشيف</button>`
+    : deal.archived
+    ? `<button class="btn btn-sm" style="width:100%;justify-content:center;background:var(--panel);border:1px solid var(--border)!important;color:#8b7355;gap:6px;" onclick="unarchiveDeal('${pid}','${uid}')"><i class="fa-solid fa-box-open"></i> استعادة من الأرشيف</button>`
+    : '';
 
   return `
 <div class="deal-card${isLate ? ' is-late' : done ? ' is-done' : ''}">
-  ${isLate ? `<div class="deal-late-bar"><i class="fa-solid fa-clock" style="margin-left:4px"></i>متأخر منذ <span class="num">${fmtNum(late)}</span> يوم — المتبقي: <span class="num">${fmtMoney(rem)}</span></div>` : ''}
+  ${isLate ? `<div class="deal-late-bar"><i class="fa-solid fa-clock" style="margin-left:4px"></i>متأخر منذ <span class="num">${fmtNum(late)}</span> يوم — المتبقي: <span class="num" style="color:#DC2626">${fmtMoney(rem)}</span></div>` : ''}
   <div class="deal-row" onclick="toggleDeal('${uid}')">
     <div class="deal-dot" style="background:${color}"></div>
     <div class="deal-info">
@@ -767,33 +433,34 @@ const archiveBtn = isFullyDone(deal) && !deal.archived
       <div class="deal-prog-wrap">
         <div class="deal-prog-track"><div class="deal-prog-fill" style="width:${pct.toFixed(1)}%;background:${pgColor}"></div></div>
         <div class="deal-prog-labels">
-          <span>مدفوع: <b style="color:${pgColor};font-family:'Inter',sans-serif">${fmtMoney(paid)}</b> (<span class="num">${pct.toFixed(1)}</span>%)</span>
-          <span>الإجمالي: <span class="num">${fmtMoney(total)}</span></span>
+          <span>مدفوع: <b style="color:${pgColor};font-family:'Inter',sans-serif">${fmtMoney(paid)}</b> (<span class="num" style="color:#1a1a1a">${pct.toFixed(1)}</span>%)</span>
+          <span>الإجمالي: <span class="num" style="color:#1a1a1a">${fmtMoney(total)}</span></span>
         </div>
       </div>
     </div>
     <div class="deal-right">
-  <button onclick="event.stopPropagation(); toggleDealFavorite('${uid}')" style="background:none;border:none;cursor:pointer;font-size:16px;padding:0;line-height:1" title="مفضلة">${deal.favorite ? '<i class="fa-solid fa-star" style="color:#FFD700"></i>' : '<i class="fa-regular fa-star" style="color:var(--muted)"></i>'}</button>
-  ${statusBadge}
-      ${!done ? `<div class="deal-rem" style="color:${isLate ? 'var(--red)' : 'var(--amber)'}">${fmtMoney(rem)}</div>` : ''}
+      <button onclick="event.stopPropagation(); toggleDealFavorite('${uid}')" style="background:none;border:none;cursor:pointer;font-size:16px;padding:0;line-height:1" title="مفضلة">${deal.favorite ? '<i class="fa-solid fa-star" style="color:#FFD700"></i>' : '<i class="fa-regular fa-star" style="color:var(--muted)"></i>'}</button>
+      ${statusBadge}
+      ${!done ? `<div class="deal-rem" style="color:${isLate ? '#DC2626' : '#D97706'}">${fmtMoney(rem)}</div>` : ''}
       <div class="deal-chev${isOpen ? ' open' : ''}" id="chev_${uid}"><i class="fa-solid fa-chevron-down"></i></div>
     </div>
   </div>
   <div class="deal-detail${isOpen ? ' open' : ''}" id="det_${uid}">
     <div class="stat-grid">${statsHtml}</div>
+    ${partnerHtml}
     ${deal.notes ? `<div class="deal-notes-box"><span><i class="fa-solid fa-note-sticky"></i></span><span>${deal.notes}</span></div>` : ''}
     ${deal.image ? `<div style="margin:8px 0"><button class="btn btn-ghost btn-sm" onclick="viewDealImageById('${uid}')"><i class="fa-solid fa-image"></i> عرض صورة الشيك</button></div>` : ''}
     <div class="pmts-section">
       <div class="pmts-head">
-        <span class="pmts-title">سجل الدفعات (<span class="num">${(deal.payments||[]).length}</span>)</span>
-        ${!done ? `<span class="pmts-rem" style="color:${isLate ? 'var(--red)' : 'var(--amber)'}"><i class="fa-solid fa-coins" style="margin-left:4px"></i>المتبقي: ${fmtMoney(rem)}</span>` : `<span class="pmts-rem" style="color:var(--green)"><i class="fa-solid fa-circle-check" style="margin-left:4px"></i>مكتمل بالكامل</span>`}
+        <span class="pmts-title"><i class="fa-solid fa-receipt" style="margin-left:4px"></i>سجل الدفعات (<span class="num">${(deal.payments||[]).length}</span>)</span>
+        ${!done ? `<span class="pmts-rem" style="color:${isLate ? '#DC2626' : '#D97706'}"><i class="fa-solid fa-coins" style="margin-left:4px"></i>المتبقي: ${fmtMoney(rem)}</span>` : `<span class="pmts-rem" style="color:#059669"><i class="fa-solid fa-circle-check" style="margin-left:4px"></i>مكتمل بالكامل</span>`}
       </div>
       ${pmtsHtml}
     </div>
     <div style="display:flex;flex-direction:column;gap:7px;">
       <div class="deal-acts">
-  ${payBtn}
-  ${whatsappBtn}
+        ${payBtn}
+        ${whatsappBtn}
         <button class="btn btn-ghost btn-sm" onclick="openEditDeal('${pid}','${uid}')"><i class="fa-regular fa-pen-to-square"></i> تعديل</button>
         <button class="btn btn-danger btn-sm" style="background:rgba(225,29,72,0.05);border:1px solid rgba(225,29,72,0.2)!important;color:#e11d48;font-size:11px;display:flex;align-items:center;gap:5px;" onclick="deleteDeal('${pid}','${uid}')">
           <i class="fa-solid fa-trash-can" style="margin-left:4px"></i><span>حذف الصفقة</span>
@@ -804,321 +471,161 @@ const archiveBtn = isFullyDone(deal) && !deal.archived
   </div>
 </div>`;}
 
-window.viewDealImageById = id => {
-  const deal = findDealById(id);
-  if(deal && deal.image) {
-    document.getElementById('fullDealImage').src = deal.image;
-    openModal('modalImageView');
-  }
-};
+window.viewDealImageById = id => { const deal = findDealById(id); if(deal && deal.image) { document.getElementById('fullDealImage').src = deal.image; openModal('modalImageView'); } };
 
 function renderPersonBlock(p, ci) {
-  const color   = PALETTE[ci % PALETTE.length];
-  const deals   = p.deals||[];
-  
-  const totalAll= deals.reduce((s,d)=>s+dTotal(d),0);
-  const paidAll = deals.reduce((s,d)=>s+dPaid(d),0);
-  const remAll  = totalAll-paidAll;
-  const pct     = totalAll>0?Math.min(100,(paidAll/totalAll)*100):0;
-  const lateC   = deals.filter(d=>daysLate(d)>0).length;
-  const doneC   = deals.filter(d=>isDone(d)).length;
-
+  const color = PALETTE[ci % PALETTE.length];
+  const deals = p.deals||[];
   const dealsHtml = deals.length===0
-    ? `<div style="text-align:center; padding:15px; color:var(--sub); font-size:12px;">لا توجد صفقات</div>`
+    ? `<div style="text-align:center; padding:15px; color:#5c3d2e; font-size:12px;"><i class="fa-solid fa-file-circle-question" style="font-size:30px;display:block;margin-bottom:8px;opacity:0.5"></i>لا توجد صفقات</div>`
     : deals.map((d,i)=>renderDealCard(d,i,p.id,ci)).join('');
 
   return `
-<div class="person-block" style="margin-bottom:20px; background:var(--panel); border-radius:16px; overflow:hidden; border:1px solid var(--border);">
-  
-  <div class="person-head" onclick="togglePerson('${p.id}')" style="cursor:pointer; display:flex; align-items:center; padding:15px; border-bottom:1px solid var(--border); gap:12px;">
-    
-    <div class="person-avatar" style="width:40px; height:40px; border-radius:50%; background:linear-gradient(135deg, ${color}, #34495e); display:flex; align-items:center; justify-content:center; color:white; font-weight:800;">
+<div class="person-block">
+  <div class="person-head" onclick="togglePerson('${p.id}')" style="cursor:pointer; display:flex; align-items:center; padding:15px; border-bottom:1px solid rgba(26,26,26,0.1); gap:12px;">
+    <div class="person-avatar" style="width:40px; height:40px; border-radius:50%; background:linear-gradient(135deg, ${color}, #1a1a1a); display:flex; align-items:center; justify-content:center; color:white; font-weight:800;">
       ${(p.name||'?').charAt(0)}
     </div>
-
     <div style="flex:1;">
-      <div style="font-weight:800; font-size:15px;">${p.name}</div>
-      <div style="font-size:10px; color:var(--sub);">${deals.length} صفقات</div>
+      <div style="font-weight:800; font-size:15px; color:#1a1a1a">${p.name}</div>
+      <div style="font-size:10px; color:#5c3d2e;">${deals.length} صفقات</div>
     </div>
-
     <div style="display:flex; gap:8px;">
-  <button onclick="event.stopPropagation(); togglePersonFavorite('${p.id}')" style="border:none; background:none; cursor:pointer; font-size:18px" title="مفضلة">${p.favorite ? '<i class="fa-solid fa-star" style="color:#FFD700"></i>' : '<i class="fa-regular fa-star" style="color:var(--muted)"></i>'}</button>
-  <button onclick="event.stopPropagation(); openEditPerson('${p.id}')" style="border:none; background:none; cursor:pointer;"><i class="fa-regular fa-pen-to-square"></i></button>
-  <button onclick="event.stopPropagation(); deletePerson('${p.id}')" style="border:none; background:none; cursor:pointer; color:#e11d48;"><i class="fa-solid fa-trash"></i></button>
-</div>
-  </div>
-
-  <div id="content_${p.id}" style="display:none; padding:10px;">
-    
-    <div class="deals-container">
-      ${dealsHtml}
+      <button onclick="event.stopPropagation(); togglePersonFavorite('${p.id}')" style="border:none; background:none; cursor:pointer; font-size:18px" title="مفضلة">${p.favorite ? '<i class="fa-solid fa-star" style="color:#FFD700"></i>' : '<i class="fa-regular fa-star" style="color:#8b7355"></i>'}</button>
+      <button onclick="event.stopPropagation(); openEditPerson('${p.id}')" style="border:none; background:none; cursor:pointer; color:#5c3d2e;" title="تعديل"><i class="fa-regular fa-pen-to-square"></i></button>
+      <button onclick="event.stopPropagation(); deletePerson('${p.id}')" style="border:none; background:none; cursor:pointer; color:#e11d48;" title="حذف"><i class="fa-solid fa-trash"></i></button>
     </div>
-    
+  </div>
+  <div id="content_${p.id}" style="display:none; padding:10px;">
+    <div class="deals-container">${dealsHtml}</div>
     <button class="btn btn-ghost btn-sm" style="width:100%; margin-top:10px; height:35px; color:${color}; display:flex; justify-content:center; align-items:center; border:1px dashed ${color}66!important; border-radius:10px; font-weight:bold;" onclick="openAddDeal('${p.id}')">
-      + إضافة صفقة جديدة
+      <i class="fa-solid fa-plus"></i> إضافة صفقة جديدة
     </button>
-
   </div>
 </div>`;
 }
 
 function render() {
   const filtered = getFiltered();
-
   if(window._syncData) window._syncData();
-
-  ['all','late','active','done'].forEach(t=>
-    document.getElementById('cnt-'+t).textContent = fmtNum(countTab(t)));
-
-  const statsBar       = document.getElementById('statsBar');
-  const tabsBar        = document.getElementById('tabsBar');
-  const sortBar        = document.getElementById('sortBar');
+  ['all','late','active','done'].forEach(t=> document.getElementById('cnt-'+t).textContent = fmtNum(countTab(t)));
+  const statsBar = document.getElementById('statsBar');
+  const tabsBar = document.getElementById('tabsBar');
+  const sortBar = document.getElementById('sortBar');
   const statsContainer = document.getElementById('statsContainer');
-updateFavCount();
+  updateFavCount();
+  
   if(persons.length > 0) {
-    tabsBar.style.display = 'block';
-    statsBar.style.display= 'block';
-    sortBar.style.display = 'flex';
-
+    tabsBar.style.display = 'block'; statsBar.style.display= 'block'; sortBar.style.display = 'flex';
     const tot = persons.reduce((s,p)=>s+(p.deals||[]).reduce((ds,d)=>ds+dTotal(d),0),0);
     const pd  = persons.reduce((s,p)=>s+(p.deals||[]).reduce((ds,d)=>ds+dPaid(d),0),0);
     const rem = tot-pd;
     const lt  = persons.reduce((s,p)=>s+(p.deals||[]).filter(d=>daysLate(d)>0).length,0);
     const dt  = persons.reduce((s,p)=>s+(p.deals||[]).length,0);
-    
+    const totalPartner = persons.reduce((s,p)=>s+(p.deals||[]).reduce((ds,d)=>ds+calcPartnerShare(d),0),0);
+
     const chips = [
-      { label:'الأشخاص', value:persons.length,    color:'#2563EB' },
-      { label:'الصفقات', value:dt,                color:'#7C3AED' },
-      { label:'الإجمالي',value:fmtMoney(tot),     color:'#0891B2' },
+      { label:'الأشخاص', value:persons.length,    color:'#1a1a1a' },
+      { label:'الصفقات', value:dt,                color:'#1a1a1a' },
+      { label:'الإجمالي',value:fmtMoney(tot),     color:'#1a1a1a' },
       { label:'مدفوع',   value:fmtMoney(pd),      color:'#059669' },
       { label:'متبقي',   value:fmtMoney(rem),     color:'#D97706' },
     ];
     if(lt>0) chips.push({ label:'متأخر', value:lt+' صفقة', color:'#DC2626' });
+    if(totalPartner>0) chips.push({ label:'🤝 الشريك', value:fmtMoney(totalPartner), color:'#1E3A5F' });
 
     statsContainer.innerHTML = chips.map(c=>`
-      <div class="stat-chip">
-        <span class="stat-chip-label">${c.label}</span>
-        <span class="stat-chip-val" style="color:${c.color}">${c.value}</span>
-      </div>`).join('');
+<div class="stat-chip" style="border:1px solid ${
+  c.color === '#1a1a1a' ? 'rgba(26,26,26,0.15)' : 
+  c.color === '#DC2626' ? 'rgba(220,38,38,0.2)' : 
+  c.color === '#1E3A5F' ? 'rgba(30,58,95,0.3)' : 
+  c.color === '#059669' ? 'rgba(5,150,105,0.2)' : 
+  'rgba(217,119,6,0.2)'
+}">
+  <span class="stat-chip-label" style="color:${c.color}">${c.label}</span>
+  <span class="stat-chip-val" style="color:${c.color}">${c.value}</span>
+</div>`).join('');
   } else {
-    tabsBar.style.display = 'none';
-    statsBar.style.display= 'none';
-    sortBar.style.display = 'none';
+    tabsBar.style.display = 'none'; statsBar.style.display= 'none'; sortBar.style.display = 'none';
   }
 
-  const list       = document.getElementById('personsList');
+  const list = document.getElementById('personsList');
   const emptyState = document.getElementById('emptyState');
-  const noResults  = document.getElementById('noResults');
-
-  if(persons.length===0) {
-    emptyState.style.display='block'; noResults.style.display='none'; list.innerHTML='';
-  } else if(filtered.length===0) {
-    emptyState.style.display='none'; noResults.style.display='block'; list.innerHTML='';
-  } else {
-    emptyState.style.display='none'; noResults.style.display='none';
-    list.innerHTML = filtered.map(p=>renderPersonBlock(p,persons.findIndex(x=>x.id===p.id))).join('');
-  }
+  const noResults = document.getElementById('noResults');
+  if(persons.length===0) { emptyState.style.display='block'; noResults.style.display='none'; list.innerHTML=''; }
+  else if(filtered.length===0) { emptyState.style.display='none'; noResults.style.display='block'; list.innerHTML=''; }
+  else { emptyState.style.display='none'; noResults.style.display='none'; list.innerHTML = filtered.map(p=>renderPersonBlock(p,persons.findIndex(x=>x.id===p.id))).join(''); }
 }
 
-// ========== دوال القائمة الجانبية ==========
-function toggleSidebar() {
-  const sidebar = document.getElementById('sidebar');
-  const overlay = document.getElementById('sidebarOverlay');
-  
-  if (sidebar.classList.contains('open')) {
-    closeSidebar();
-  } else {
-    sidebar.classList.add('open');
-    overlay.classList.add('open');
-  }
-}
+// ========== القائمة الجانبية ==========
+function toggleSidebar(){const sidebar=document.getElementById('sidebar');const overlay=document.getElementById('sidebarOverlay');if(sidebar.classList.contains('open')){closeSidebar();}else{sidebar.classList.add('open');overlay.classList.add('open');}}
+function closeSidebar(){document.getElementById('sidebar').classList.remove('open');document.getElementById('sidebarOverlay').classList.remove('open');}
+function toggleSection(id){const el=document.getElementById(id);const arr=document.getElementById('arr-'+id);const isOpen=el.style.display!=='none';document.querySelectorAll('.sidebar-menu').forEach(menu=>{menu.style.display='none';});document.querySelectorAll('[id^="arr-"] i').forEach(icon=>{icon.style.transform='rotate(0deg)';});if(!isOpen){el.style.display='flex';if(arr){const icon=arr.querySelector('i');if(icon)icon.style.transform='rotate(90deg)';}}}
+function openSettings(){showToast('الإعدادات — قريباً 🔜','info',3000,'<i class="fa-solid fa-gear"></i>');}
+function changeLanguage(){showToast('تغيير اللغة — قريباً 🔜','info',3000,'<i class="fa-solid fa-language"></i>');}
+function openAbout(){showToast('حول التطبيق — متتبع الأقساط v3.0 ⚡','info',3000,'<i class="fa-solid fa-circle-info"></i>');}
 
-function closeSidebar() {
-  document.getElementById('sidebar').classList.remove('open');
-  document.getElementById('sidebarOverlay').classList.remove('open');
-}
+// ========== تصدير واستيراد ==========
+function exportData(){if(!persons||persons.length===0){showToast('لا توجد بيانات للتصدير','error');return;}const dataStr=JSON.stringify(persons,null,2);const blob=new Blob([dataStr],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='installment-data.json';document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);showToast('<i class="fa-solid fa-file-export"></i> تم تصدير البيانات بنجاح','success');}
+function importData(){const input=document.createElement('input');input.type='file';input.accept='.json';input.onchange=(e)=>{const file=e.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=(event)=>{try{const raw=JSON.parse(event.target.result);let data;if(Array.isArray(raw)){data=raw;}else if(raw.data&&Array.isArray(raw.data)){data=raw.data;}else{showToast('الملف غير صالح ❌','error');return;}persons=data;render();showToast('<i class="fa-solid fa-file-import"></i> تم استيراد البيانات بنجاح','success');if(window._syncData)window._syncData();}catch(err){showToast('خطأ في قراءة الملف ❌','error');}};reader.readAsText(file);};input.click();}
+function createBackup(){if(!persons||persons.length===0){showToast('لا توجد بيانات للنسخ','error');return;}const backup={date:new Date().toISOString(),data:JSON.parse(JSON.stringify(persons))};const dataStr=JSON.stringify(backup,null,2);const blob=new Blob([dataStr],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;const d=new Date();const dateStr=d.toLocaleDateString('ar-SA').replace(/\//g,'-');const timeStr=d.toLocaleTimeString('ar-SA',{hour:'2-digit',minute:'2-digit'}).replace(/:/g,'-');a.download=`backup-${dateStr}-${timeStr}.json`;document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);showToast('<i class="fa-solid fa-cloud-arrow-up"></i> تم تنزيل النسخة الاحتياطية','success');}
 
-function toggleSection(id) {
-  const el = document.getElementById(id);
-  const arr = document.getElementById('arr-' + id);
-  const isOpen = el.style.display !== 'none';
-  
-  // إغلاق كل الأقسام
-  document.querySelectorAll('.sidebar-menu').forEach(menu => {
-    menu.style.display = 'none';
-  });
-  
-  // إعادة كل الأسهم لوضعها الأصلي
-  document.querySelectorAll('[id^="arr-"] i').forEach(icon => {
-    icon.style.transform = 'rotate(0deg)';
-  });
-  
-  // فتح القسم المطلوب
-  if (!isOpen) {
-    el.style.display = 'flex';
-    if(arr) {
-      const icon = arr.querySelector('i');
-      if(icon) icon.style.transform = 'rotate(90deg)';
-    }
-  }
-}
+// ========== تهيئة التاريخ ==========
+(function initDateSelects(){const now=new Date();for(let i=1;i<=31;i++){['d_from_d','d_to_d'].forEach(id=>{const el=document.getElementById(id);if(el)el.add(new Option(i,i));});}MN.forEach((m,i)=>{['d_from_m','d_to_m'].forEach(id=>{const el=document.getElementById(id);if(el)el.add(new Option(m,i+1));});});for(let y=now.getFullYear()-2;y<=now.getFullYear()+5;y++){['d_from_y','d_to_y'].forEach(id=>{const el=document.getElementById(id);if(el)el.add(new Option(y,y));});}})();
 
-function openSettings() {
-  showToast('الإعدادات — قريباً 🔜', 'info', 3000, '<i class="fa-solid fa-gear"></i>');
-}
-
-function changeLanguage() {
-  showToast('تغيير اللغة — قريباً 🔜', 'info', 3000, '<i class="fa-solid fa-language"></i>');
-}
-
-function openAbout() {
-  showToast('حول التطبيق — متتبع الأقساط v1.0 ⚡', 'info', 3000, '<i class="fa-solid fa-circle-info"></i>');
-}
-
-// ========== تصدير واستيراد ونسخ احتياطي ==========
-function exportData() {
-  if(!persons || persons.length === 0) {
-    showToast('لا توجد بيانات للتصدير', 'error');
-    return;
-  }
-  const dataStr = JSON.stringify(persons, null, 2);
-  const blob = new Blob([dataStr], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'installment-data.json';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-  showToast('<i class="fa-solid fa-file-export"></i> تم تصدير البيانات بنجاح', 'success');
-}
-
-function importData() {
-  const input = document.createElement('input');
-  input.type = 'file';
-  input.accept = '.json';
-  input.onchange = (e) => {
-    const file = e.target.files[0];
-    if(!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const raw = JSON.parse(event.target.result);
-        let data;
-        
-        // نعرف نوع الملف
-        console.log('raw:', raw);
-        if(Array.isArray(raw)) {
-          data = raw;
-        } else if(raw.data && Array.isArray(raw.data)) {
-          data = raw.data;
-        } else {
-          showToast('الملف غير صالح ❌', 'error');
-          return;
-        }
-        
-        persons = data;
-        render();
-        showToast('<i class="fa-solid fa-file-import"></i> تم استيراد البيانات بنجاح', 'success');
-        if(window._syncData) window._syncData();
-      } catch (err) {
-        showToast('خطأ في قراءة الملف ❌', 'error');
-      }
-    };
-    reader.readAsText(file);
-  };
-  input.click();
-}
-
-function createBackup() {
-  if(!persons || persons.length === 0) {
-    showToast('لا توجد بيانات للنسخ', 'error');
-    return;
-  }
-  
-  const backup = {
-    date: new Date().toISOString(),
-    data: JSON.parse(JSON.stringify(persons))
-  };
-  
-  const dataStr = JSON.stringify(backup, null, 2);
-  const blob = new Blob([dataStr], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  
-  const d = new Date();
-  const dateStr = d.toLocaleDateString('ar-SA').replace(/\//g, '-');
-  const timeStr = d.toLocaleTimeString('ar-SA', {hour:'2-digit',minute:'2-digit'}).replace(/:/g, '-');
-  a.download = `backup-${dateStr}-${timeStr}.json`;
-  
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-  
-  showToast('<i class="fa-solid fa-cloud-arrow-up"></i> تم تنزيل النسخة الاحتياطية', 'success');
-}
-
-function restoreBackup() {
-  importData();
-}
-
-// ========== تهيئة قوائم التاريخ المنسدلة ==========
-(function initDateSelects() {
-  const now = new Date();
-  for(let i=1;i<=31;i++) {
-    ['d_from_d','d_to_d'].forEach(id=>{const el=document.getElementById(id);if(el)el.add(new Option(i,i));});
-  }
-  MN.forEach((m,i)=>{
-    ['d_from_m','d_to_m'].forEach(id=>{const el=document.getElementById(id);if(el)el.add(new Option(m,i+1));});
-  });
-  for(let y=now.getFullYear()-2;y<=now.getFullYear()+5;y++) {
-    ['d_from_y','d_to_y'].forEach(id=>{const el=document.getElementById(id);if(el)el.add(new Option(y,y));});
-  }
-})();
 // ========== لوحة التحكم ==========
 function openDashboard() {
   const totalDeals = persons.reduce((s,p) => s + (p.deals||[]).length, 0);
   const totalAmount = persons.reduce((s,p) => s + (p.deals||[]).reduce((ds,d) => ds + dTotal(d), 0), 0);
   const totalPaid = persons.reduce((s,p) => s + (p.deals||[]).reduce((ds,d) => ds + dPaid(d), 0), 0);
-  const totalProfit = persons.reduce((s,p) => s + (p.deals||[]).reduce((ds,d) => ds + (dTotal(d) - (Number(d.devicePrice||0) * Number(d.deviceCount||1))), 0), 0);
-  const totalSadaqa = totalProfit * 0.01;
   const remaining = totalAmount - totalPaid;
   const lateDeals = persons.reduce((s,p) => s + (p.deals||[]).filter(d => daysLate(d) > 0).length, 0);
+  const totalPartnerShare = persons.reduce((s,p) => s + (p.deals||[]).reduce((ds,d) => ds + calcPartnerShare(d), 0), 0);
+  const totalNetProfit = persons.reduce((s,p) => s + (p.deals||[]).reduce((ds,d) => ds + calcYourNetProfit(d), 0), 0);
+  const totalSadaqa = totalNetProfit * 0.01;
   
   const html = `
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px">
-      <div style="background:var(--panel);border-radius:12px;padding:14px;text-align:center;border:1px solid var(--border)">
-        <div style="font-size:11px;color:var(--muted)">الصفقات</div>
-        <div style="font-size:22px;font-weight:900;color:#B8860B">${totalDeals}</div>
+      <div style="background:var(--panel);border:1px solid rgba(26,26,26,0.1);border-radius:12px;padding:14px;text-align:center">
+        <div style="font-size:11px;color:#8b7355"><i class="fa-solid fa-file-contract" style="margin-left:4px"></i>الصفقات</div>
+        <div style="font-size:22px;font-weight:900;color:#1a1a1a">${totalDeals}</div>
       </div>
-      <div style="background:var(--panel);border-radius:12px;padding:14px;text-align:center;border:1px solid var(--border)">
-        <div style="font-size:11px;color:var(--muted)">الإجمالي</div>
-        <div style="font-size:18px;font-weight:900;color:var(--blue)">${fmtMoney(totalAmount)}</div>
+      <div style="background:var(--panel);border:1px solid rgba(26,26,26,0.1);border-radius:12px;padding:14px;text-align:center">
+        <div style="font-size:11px;color:#8b7355"><i class="fa-solid fa-sack-dollar" style="margin-left:4px"></i>الإجمالي</div>
+        <div style="font-size:18px;font-weight:900;color:#1a1a1a">${fmtMoney(totalAmount)}</div>
       </div>
-      <div style="background:var(--panel);border-radius:12px;padding:14px;text-align:center;border:1px solid var(--border)">
-        <div style="font-size:11px;color:var(--muted)">المدفوع</div>
-        <div style="font-size:18px;font-weight:900;color:#2d5a27">${fmtMoney(totalPaid)}</div>
+      <div style="background:var(--panel);border:1px solid rgba(26,26,26,0.1);border-radius:12px;padding:14px;text-align:center">
+        <div style="font-size:11px;color:#8b7355"><i class="fa-solid fa-circle-check" style="margin-left:4px;color:#059669"></i>المدفوع</div>
+        <div style="font-size:18px;font-weight:900;color:#059669">${fmtMoney(totalPaid)}</div>
       </div>
     </div>
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px">
-      <div style="background:var(--panel);border-radius:12px;padding:14px;text-align:center;border:1px solid var(--border)">
-        <div style="font-size:11px;color:var(--muted)">المتبقي</div>
+      <div style="background:var(--panel);border:1px solid rgba(26,26,26,0.1);border-radius:12px;padding:14px;text-align:center">
+        <div style="font-size:11px;color:#8b7355"><i class="fa-solid fa-coins" style="margin-left:4px"></i>المتبقي</div>
         <div style="font-size:18px;font-weight:900;color:#D97706">${fmtMoney(remaining)}</div>
       </div>
-      <div style="background:var(--panel);border-radius:12px;padding:14px;text-align:center;border:1px solid var(--border)">
-        <div style="font-size:11px;color:var(--muted)">الأرباح</div>
-        <div style="font-size:18px;font-weight:900;color:#7C3AED">${fmtMoney(totalProfit)}</div>
+      <div style="background:var(--panel);border:1px solid rgba(26,26,26,0.1);border-radius:12px;padding:14px;text-align:center">
+        <div style="font-size:11px;color:#8b7355"><i class="fa-solid fa-chart-line" style="margin-left:4px"></i>صافي ربحك</div>
+        <div style="font-size:18px;font-weight:900;color:#059669">${fmtMoney(totalNetProfit)}</div>
       </div>
-      <div style="background:var(--panel);border-radius:12px;padding:14px;text-align:center;border:1px solid var(--border)">
-        <div style="font-size:10px;color:var(--muted);cursor:pointer" onclick="openSadaqaDetails()"><i class="fa-solid fa-hand-holding-heart" style="margin-left:3px"></i>الصدقة (1%) <i class="fa-solid fa-arrow-left" style="font-size:9px"></i></div>
-        <div style="font-size:18px;font-weight:900;color:#B8860B">${fmtMoney(totalSadaqa)}</div>
+      <div style="background:var(--panel);border:1px solid rgba(26,26,26,0.1);border-radius:12px;padding:14px;text-align:center">
+        <div style="font-size:10px;color:#8b7355;cursor:pointer" onclick="openSadaqaDetails()"><i class="fa-solid fa-hand-holding-heart" style="margin-left:3px"></i>الصدقة (1%) <i class="fa-solid fa-arrow-left" style="font-size:9px"></i></div>
+        <div style="font-size:18px;font-weight:900;color:#059669">${fmtMoney(totalSadaqa)}</div>
       </div>
     </div>
+    ${totalPartnerShare > 0 ? `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
+      <div style="background:rgba(30,58,95,0.08);border:1px solid rgba(30,58,95,0.2);border-radius:12px;padding:14px;text-align:center">
+        <div style="font-size:11px;color:#1E3A5F"><i class="fa-solid fa-handshake" style="margin-left:4px"></i>نصيب الشريك</div>
+        <div style="font-size:18px;font-weight:900;color:#1E3A5F">${fmtMoney(totalPartnerShare)}</div>
+      </div>
+      <div style="background:rgba(5,150,105,0.08);border:1px solid rgba(5,150,105,0.2);border-radius:12px;padding:14px;text-align:center">
+        <div style="font-size:11px;color:#059669"><i class="fa-solid fa-briefcase" style="margin-left:4px"></i>صافي أرباحك</div>
+        <div style="font-size:18px;font-weight:900;color:#059669">${fmtMoney(totalNetProfit)}</div>
+      </div>
+    </div>` : ''}
     ${lateDeals > 0 ? `
-    <div style="background:var(--red-l);border-radius:12px;padding:12px;text-align:center;border:1px solid var(--red-b);color:var(--red);font-weight:700">
+    <div style="background:rgba(220,38,38,0.08);border:1px solid rgba(220,38,38,0.2);border-radius:12px;padding:12px;text-align:center;color:#DC2626;font-weight:700">
       <i class="fa-solid fa-triangle-exclamation" style="margin-left:4px"></i> يوجد ${lateDeals} صفقات متأخرة
     </div>` : ''}
   `;
@@ -1126,480 +633,107 @@ function openDashboard() {
   document.getElementById('dashboardContent').innerHTML = html;
   openModal('modalDashboard');
 }
+
 // ========== تفاصيل الصدقة ==========
 function openSadaqaDetails() {
   closeModal('modalDashboard');
-  
-  let totalSadaqa = 0;
-  let totalPaid = 0;
-  let dealsList = '';
-  
-  // نجمع كل المدفوعات العامة
+  let totalSadaqa = 0; let totalPaid = 0; let dealsList = '';
   let allPayments = [];
-  persons.forEach(p => {
-    (p.deals||[]).forEach(d => {
-      (d.sadaqaPayments||[]).forEach(pmt => {
-        allPayments.push({
-          amount: pmt.amount,
-          date: pmt.date,
-          note: pmt.note,
-          person: p.name,
-          deal: d.deviceName || 'بدون اسم'
-        });
-      });
-    });
-  });
+  persons.forEach(p => { (p.deals||[]).forEach(d => { (d.sadaqaPayments||[]).forEach(pmt => { allPayments.push({ amount: pmt.amount, date: pmt.date, note: pmt.note, person: p.name, deal: d.deviceName || 'بدون اسم' }); }); }); });
   totalPaid = allPayments.reduce((s,pmt) => s + pmt.amount, 0);
-  
-  // لكل صفقة، نحسب الصدقة المستحقة والمتبقي
-  persons.forEach(p => {
-    (p.deals||[]).forEach(d => {
-      const profit = dTotal(d) - (Number(d.devicePrice||0) * Number(d.deviceCount||1));
-      const sadaqa = profit * 0.01;
-      totalSadaqa += sadaqa;
-      
-      // المدفوع لهذه الصفقة
-      const paidForDeal = allPayments
-        .filter(pmt => pmt.person === p.name && pmt.deal === (d.deviceName || 'بدون اسم'))
-        .reduce((s,pmt) => s + pmt.amount, 0);
-      
-      const rem = sadaqa - paidForDeal;
-      
-      dealsList += `
-        <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
-          <div>
-            <div style="font-weight:700;font-size:13px">${d.deviceName || 'بدون اسم'}</div>
-            <div style="font-size:10px;color:var(--muted)">${p.name}</div>
-          </div>
-          <div style="text-align:left">
-            ${rem > 0 ? `<span style="font-size:13px;font-weight:800;color:#8B0000">${fmtMoney(rem)}</span>` : `<span style="font-size:11px;color:#2d5a27"><i class="fa-solid fa-circle-check"></i> مكتملة</span>`}
-            <div style="font-size:9px;color:var(--muted)">من ${fmtMoney(sadaqa)}</div>
-          </div>
-        </div>`;
-    });
-  });
-  
+  persons.forEach(p => { (p.deals||[]).forEach(d => { const netYourProfit = calcYourNetProfit(d); const sadaqa = netYourProfit * 0.01; totalSadaqa += sadaqa; const paidForDeal = allPayments.filter(pmt => pmt.person === p.name && pmt.deal === (d.deviceName || 'بدون اسم')).reduce((s,pmt) => s + pmt.amount, 0); const rem = sadaqa - paidForDeal; dealsList += `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(26,26,26,0.08)"><div><div style="font-weight:700;font-size:13px">${d.deviceName || 'بدون اسم'}</div><div style="font-size:10px;color:#8b7355">${p.name}</div></div><div style="text-align:left">${rem > 0 ? `<span style="font-size:13px;font-weight:800;color:#DC2626">${fmtMoney(rem)}</span>` : `<span style="font-size:11px;color:#059669"><i class="fa-solid fa-circle-check"></i> مكتملة</span>`}<div style="font-size:9px;color:#8b7355">من ${fmtMoney(sadaqa)}</div></div></div>`; }); });
   const remaining = totalSadaqa - totalPaid;
-  
-  let paymentsHtml = allPayments.length === 0
-    ? '<div style="text-align:center;color:var(--muted);padding:10px;font-size:12px">لا توجد مدفوعات بعد</div>'
-    : allPayments.map(pmt => `
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;font-size:11px;border-bottom:1px solid var(--faint)">
-        <span style="color:var(--sub)">${fmtDate(pmt.date)} · ${pmt.deal} (${pmt.person})${pmt.note ? ' · ' + pmt.note : ''}</span>
-        <span style="color:#2d5a27;font-weight:700">${fmtMoney(pmt.amount)}</span>
-      </div>`).join('');
+  let paymentsHtml = allPayments.length === 0 ? '<div style="text-align:center;color:#8b7355;padding:10px;font-size:12px">لا توجد مدفوعات بعد</div>' : allPayments.map(pmt => `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;font-size:11px;border-bottom:1px solid rgba(26,26,26,0.05)"><span style="color:#5c3d2e">${fmtDate(pmt.date)} · ${pmt.deal} (${pmt.person})${pmt.note ? ' · ' + pmt.note : ''}</span><span style="color:#059669;font-weight:700">${fmtMoney(pmt.amount)}</span></div>`).join('');
   
   const html = `
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px">
-      <div style="background:var(--panel);border-radius:12px;padding:12px;text-align:center;border:1px solid var(--border)">
-        <div style="font-size:10px;color:var(--muted)"><i class="fa-solid fa-hand-holding-heart" style="margin-left:3px"></i>إجمالي الصدقة</div>
-        <div style="font-size:16px;font-weight:900;color:#B8860B">${fmtMoney(totalSadaqa)}</div>
+      <div style="background:var(--panel);border:1px solid rgba(26,26,26,0.1);border-radius:12px;padding:12px;text-align:center">
+        <div style="font-size:10px;color:#8b7355"><i class="fa-solid fa-hand-holding-heart" style="margin-left:3px"></i>إجمالي الصدقة</div>
+        <div style="font-size:16px;font-weight:900;color:#059669">${fmtMoney(totalSadaqa)}</div>
+        <div style="font-size:8px;color:#8b7355;margin-top:2px">1% من صافي ربحك</div>
       </div>
-      <div style="background:var(--panel);border-radius:12px;padding:12px;text-align:center;border:1px solid var(--border)">
-        <div style="font-size:10px;color:var(--muted)"><i class="fa-solid fa-circle-check" style="margin-left:3px;color:#2d5a27"></i>مدفوعة</div>
-        <div style="font-size:16px;font-weight:900;color:#2d5a27">${fmtMoney(totalPaid)}</div>
+      <div style="background:var(--panel);border:1px solid rgba(26,26,26,0.1);border-radius:12px;padding:12px;text-align:center">
+        <div style="font-size:10px;color:#8b7355"><i class="fa-solid fa-circle-check" style="margin-left:3px;color:#059669"></i>مدفوعة</div>
+        <div style="font-size:16px;font-weight:900;color:#059669">${fmtMoney(totalPaid)}</div>
       </div>
-      <div style="background:var(--panel);border-radius:12px;padding:12px;text-align:center;border:1px solid var(--border)">
-        <div style="font-size:10px;color:var(--muted)"><i class="fa-solid fa-circle-xmark" style="margin-left:3px;color:#8B0000"></i>متبقية</div>
-        <div style="font-size:16px;font-weight:900;color:#8B0000">${fmtMoney(remaining)}</div>
+      <div style="background:var(--panel);border:1px solid rgba(26,26,26,0.1);border-radius:12px;padding:12px;text-align:center">
+        <div style="font-size:10px;color:#8b7355"><i class="fa-solid fa-circle-xmark" style="margin-left:3px;color:#DC2626"></i>متبقية</div>
+        <div style="font-size:16px;font-weight:900;color:#DC2626">${fmtMoney(remaining)}</div>
       </div>
     </div>
     <div style="display:flex;gap:8px;margin-bottom:12px">
       <input class="inp" type="number" id="sadaqaAmount" placeholder="المبلغ..." style="flex:1;padding:8px"/>
       <input class="inp" id="sadaqaNote" placeholder="ملاحظة (اختياري)..." style="flex:2;padding:8px"/>
-      <button class="btn btn-sm" style="background:var(--amber-l);border:1px solid var(--amber-b);color:#B8860B;white-space:nowrap" onclick="paySadaqa()"><i class="fa-solid fa-hand-holding-heart" style="margin-left:4px"></i>دفع</button>
+      <button class="btn btn-sm" style="background:rgba(5,150,105,0.1);border:1px solid rgba(5,150,105,0.3);color:#059669;white-space:nowrap" onclick="paySadaqa()"><i class="fa-solid fa-hand-holding-heart" style="margin-left:4px"></i>دفع</button>
     </div>
     <details style="margin-bottom:12px" open>
-      <summary style="cursor:pointer;font-weight:700;font-size:13px;color:var(--sub);padding:8px 0"><i class="fa-solid fa-list-check" style="margin-left:4px"></i>المتبقي على كل صفقة</summary>
-      <div style="max-height:200px;overflow-y:auto;margin-top:8px">${dealsList || '<div style="text-align:center;color:var(--muted);padding:10px">لا توجد صفقات</div>'}</div>
+      <summary style="cursor:pointer;font-weight:700;font-size:13px;color:#5c3d2e;padding:8px 0"><i class="fa-solid fa-list-check" style="margin-left:4px"></i>المتبقي على كل صفقة</summary>
+      <div style="max-height:200px;overflow-y:auto;margin-top:8px">${dealsList || '<div style="text-align:center;color:#8b7355;padding:10px">لا توجد صفقات</div>'}</div>
     </details>
     <details style="margin-bottom:12px">
-      <summary style="cursor:pointer;font-weight:700;font-size:13px;color:var(--sub);padding:8px 0"><i class="fa-solid fa-receipt" style="margin-left:4px"></i>سجل المدفوعات</summary>
+      <summary style="cursor:pointer;font-weight:700;font-size:13px;color:#5c3d2e;padding:8px 0"><i class="fa-solid fa-receipt" style="margin-left:4px"></i>سجل المدفوعات</summary>
       <div style="max-height:200px;overflow-y:auto;margin-top:8px">${paymentsHtml}</div>
     </details>
   `;
-  
   document.getElementById('sadaqaContent').innerHTML = html;
   openModal('modalSadaqa');
 }
 
-function markSadaqaPaid(did) {
-  const deal = findDealById(did);
-  if(deal) {
-    deal.sadaqaPaid = true;
-    showToast('<i class="fa-solid fa-circle-check" style="color:#2d5a27"></i> تم تسجيل دفع الصدقة', 'success');
-    openSadaqaDetails();
-    const _u = window._getUser?.();
-    if(_u && window._setDoc) {
-      const cleanData = JSON.parse(JSON.stringify(persons));
-      window._setDoc(window._doc(window._db, "users_data", _u.uid), { my_list: cleanData }).catch(()=>{});
-    }
-  }
-}
-function undoSadaqaPaid(did) {
-  const deal = findDealById(did);
-  if(deal) {
-    deal.sadaqaPaid = false;
-    showToast('<i class="fa-solid fa-rotate-left"></i> تم التراجع عن الدفع', 'info');
-    openSadaqaDetails();
-    const _u = window._getUser?.();
-    if(_u && window._setDoc) {
-      const cleanData = JSON.parse(JSON.stringify(persons));
-      window._setDoc(window._doc(window._db, "users_data", _u.uid), { my_list: cleanData }).catch(()=>{});
-    }
-  }
-}
-
 function paySadaqa() {
   let amount = Number(document.getElementById('sadaqaAmount')?.value);
-  
-  if(!amount || amount <= 0) {
-    showToast('أدخل مبلغ صحيح', 'error');
-    return;
-  }
-  
-  // نجمع المدفوعات السابقة لكل صفقة
+  if(!amount || amount <= 0) { showToast('أدخل مبلغ صحيح', 'error'); return; }
   let allPayments = [];
-  persons.forEach(p => {
-    (p.deals||[]).forEach(d => {
-      (d.sadaqaPayments||[]).forEach(pmt => {
-        allPayments.push({
-          ...pmt,
-          person: p.name,
-          deal: d.deviceName || 'بدون اسم',
-          dealId: d.id
-        });
-      });
-    });
-  });
-  
-  // نحسب المتبقي الإجمالي
+  persons.forEach(p => { (p.deals||[]).forEach(d => { (d.sadaqaPayments||[]).forEach(pmt => { allPayments.push({...pmt, person: p.name, deal: d.deviceName || 'بدون اسم', dealId: d.id}); }); }); });
   let totalSadaqa = 0;
-  persons.forEach(p => {
-    (p.deals||[]).forEach(d => {
-      const profit = dTotal(d) - (Number(d.devicePrice||0) * Number(d.deviceCount||1));
-      totalSadaqa += profit * 0.01;
-    });
-  });
-  
+  persons.forEach(p => { (p.deals||[]).forEach(d => { const netYourProfit = calcYourNetProfit(d); totalSadaqa += netYourProfit * 0.01; }); });
   const totalPaid = allPayments.reduce((s,pmt) => s + pmt.amount, 0);
   const remaining = totalSadaqa - totalPaid;
-  
-  if(amount > remaining + 0.01) {
-    showToast('المبلغ أكبر من المتبقي (' + fmtMoney(remaining) + ')', 'error');
-    return;
-  }
-  
-  // نوزع المبلغ على الصفقات بالترتيب
+  if(amount > remaining + 0.01) { showToast('المبلغ أكبر من المتبقي (' + fmtMoney(remaining) + ')', 'error'); return; }
   let remainingAmount = amount;
   const note = document.getElementById('sadaqaNote')?.value?.trim() || '';
-  
-  for(let p of persons) {
-    for(let d of (p.deals||[])) {
-      if(remainingAmount <= 0) break;
-      
-      const profit = dTotal(d) - (Number(d.devicePrice||0) * Number(d.deviceCount||1));
-      const sadaqa = profit * 0.01;
-      
-      // المدفوع لهذه الصفقة
-      const paidForDeal = allPayments
-        .filter(pmt => pmt.dealId === d.id)
-        .reduce((s,pmt) => s + pmt.amount, 0);
-      
-      const remainingForDeal = sadaqa - paidForDeal;
-      
-      if(remainingForDeal > 0) {
-        const payAmount = Math.min(remainingAmount, remainingForDeal);
-        
-        d.sadaqaPayments = d.sadaqaPayments || [];
-        d.sadaqaPayments.push({
-          id: genId(),
-          date: new Date().toISOString().split('T')[0],
-          amount: payAmount,
-          note: note
-        });
-        
-        remainingAmount -= payAmount;
-      }
-    }
-    if(remainingAmount <= 0) break;
-  }
-  
-  document.getElementById('sadaqaAmount').value = '';
-  document.getElementById('sadaqaNote').value = '';
-  
+  for(let p of persons) { for(let d of (p.deals||[])) { if(remainingAmount <= 0) break; const netYourProfit = calcYourNetProfit(d); const sadaqa = netYourProfit * 0.01; const paidForDeal = allPayments.filter(pmt => pmt.dealId === d.id).reduce((s,pmt) => s + pmt.amount, 0); const remainingForDeal = sadaqa - paidForDeal; if(remainingForDeal > 0) { const payAmount = Math.min(remainingAmount, remainingForDeal); d.sadaqaPayments = d.sadaqaPayments || []; d.sadaqaPayments.push({ id: genId(), date: new Date().toISOString().split('T')[0], amount: payAmount, note: note }); remainingAmount -= payAmount; } } if(remainingAmount <= 0) break; }
+  document.getElementById('sadaqaAmount').value = ''; document.getElementById('sadaqaNote').value = '';
   showToast(`<i class="fa-solid fa-hand-holding-heart"></i> تم توزيع ${fmtMoney(amount)} على الصفقات`, 'success');
   openSadaqaDetails();
-  
   const _u = window._getUser?.();
-  if(_u && window._setDoc) {
-    const cleanData = JSON.parse(JSON.stringify(persons));
-    window._setDoc(window._doc(window._db, "users_data", _u.uid), { my_list: cleanData }).catch(()=>{});
-  }
-}
-// ========== المفضلة ==========
-function toggleDealFavorite(did) {
-  const deal = findDealById(did);
-  if(deal) {
-    deal.favorite = !deal.favorite;
-    render();
-    showToast(deal.favorite ? '<i class="fa-solid fa-star" style="color:#FFD700"></i> أضيف للمفضلة' : '<i class="fa-regular fa-star"></i> أزيل من المفضلة', 'info');
-    const _u = window._getUser?.();
-    if(_u && window._setDoc) {
-      const cleanData = JSON.parse(JSON.stringify(persons));
-      window._setDoc(window._doc(window._db, "users_data", _u.uid), { my_list: cleanData }).catch(()=>{});
-    }
-  }
+  if(_u && window._setDoc) { const cleanData = JSON.parse(JSON.stringify(persons)); window._setDoc(window._doc(window._db, "users_data", _u.uid), { my_list: cleanData }).catch(()=>{}); }
 }
 
-function togglePersonFavorite(pid) {
-  const p = persons.find(x => x.id === pid);
-  if(p) {
-    p.favorite = !p.favorite;
-    render();
-    showToast(p.favorite ? '<i class="fa-solid fa-star" style="color:#FFD700"></i> أضيف الشخص للمفضلة' : '<i class="fa-regular fa-star"></i> أزيل الشخص من المفضلة', 'info');
-    const _u = window._getUser?.();
-    if(_u && window._setDoc) {
-      const cleanData = JSON.parse(JSON.stringify(persons));
-      window._setDoc(window._doc(window._db, "users_data", _u.uid), { my_list: cleanData }).catch(()=>{});
-    }
-  }
-}
+// ========== المفضلة ==========
+function toggleDealFavorite(did) { const deal = findDealById(did); if(deal) { deal.favorite = !deal.favorite; render(); showToast(deal.favorite ? '<i class="fa-solid fa-star" style="color:#FFD700"></i> أضيف للمفضلة' : '<i class="fa-regular fa-star"></i> أزيل من المفضلة', 'info'); const _u = window._getUser?.(); if(_u && window._setDoc) { const cleanData = JSON.parse(JSON.stringify(persons)); window._setDoc(window._doc(window._db, "users_data", _u.uid), { my_list: cleanData }).catch(()=>{}); } } }
+function togglePersonFavorite(pid) { const p = persons.find(x => x.id === pid); if(p) { p.favorite = !p.favorite; render(); showToast(p.favorite ? '<i class="fa-solid fa-star" style="color:#FFD700"></i> أضيف الشخص للمفضلة' : '<i class="fa-regular fa-star"></i> أزيل الشخص من المفضلة', 'info'); const _u = window._getUser?.(); if(_u && window._setDoc) { const cleanData = JSON.parse(JSON.stringify(persons)); window._setDoc(window._doc(window._db, "users_data", _u.uid), { my_list: cleanData }).catch(()=>{}); } } }
 
 function showFavorites() {
   let filtered = [];
-  
-  persons.forEach(p => {
-    if(p.favorite && (p.deals||[]).length > 0) {
-      filtered.push({...p, deals: p.deals});
-    } else {
-      const favDeals = (p.deals||[]).filter(d => d.favorite);
-      if(favDeals.length > 0) {
-        filtered.push({...p, deals: favDeals});
-      }
-    }
-  });
-  
-  if(filtered.length === 0) {
-    showToast('لا توجد عناصر في المفضلة', 'info');
-    return;
-  }
-  
-  document.getElementById('personsList').innerHTML = 
-    '<div style="text-align:center;margin-bottom:16px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap">' +
-'<button class="btn btn-ghost btn-sm" onclick="render()"><i class="fa-solid fa-house" style="margin-left:4px"></i>الرئيسية</button>' +
-'<button class="btn btn-ghost btn-sm active" onclick="showFavoritesFilter(\'all\', this)"><i class="fa-solid fa-layer-group" style="margin-left:4px"></i>عرض الكل</button>' +
-'<button class="btn btn-ghost btn-sm" onclick="showFavoritesFilter(\'persons\', this)"><i class="fa-solid fa-user" style="margin-left:4px"></i>الأشخاص</button>' +
-'<button class="btn btn-ghost btn-sm" onclick="showFavoritesFilter(\'deals\', this)"><i class="fa-solid fa-file-contract" style="margin-left:4px"></i>الصفقات</button>' +
-'</div>' +
-    filtered.map(p => renderPersonBlock(p, persons.indexOf(p))).join('');
-  
-  document.getElementById('emptyState').style.display = 'none';
-  document.getElementById('noResults').style.display = 'none';
-  
-  setTimeout(() => {
-    filtered.forEach(p => {
-      const el = document.getElementById('content_' + p.id);
-      if(el) el.style.display = 'block';
-    });
-  }, 100);
+  persons.forEach(p => { if(p.favorite && (p.deals||[]).length > 0) { filtered.push({...p, deals: p.deals}); } else { const favDeals = (p.deals||[]).filter(d => d.favorite); if(favDeals.length > 0) { filtered.push({...p, deals: favDeals}); } } });
+  if(filtered.length === 0) { showToast('لا توجد عناصر في المفضلة', 'info'); return; }
+  document.getElementById('personsList').innerHTML = '<div style="text-align:center;margin-bottom:16px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap">' + '<button class="btn btn-ghost btn-sm" onclick="render()"><i class="fa-solid fa-house" style="margin-left:4px"></i>الرئيسية</button>' + '<button class="btn btn-ghost btn-sm active" onclick="showFavoritesFilter(\'all\', this)"><i class="fa-solid fa-layer-group" style="margin-left:4px"></i>عرض الكل</button>' + '<button class="btn btn-ghost btn-sm" onclick="showFavoritesFilter(\'persons\', this)"><i class="fa-solid fa-user" style="margin-left:4px"></i>الأشخاص</button>' + '<button class="btn btn-ghost btn-sm" onclick="showFavoritesFilter(\'deals\', this)"><i class="fa-solid fa-file-contract" style="margin-left:4px"></i>الصفقات</button>' + '</div>' + filtered.map(p => renderPersonBlock(p, persons.indexOf(p))).join('');
+  document.getElementById('emptyState').style.display = 'none'; document.getElementById('noResults').style.display = 'none';
+  setTimeout(() => { filtered.forEach(p => { const el = document.getElementById('content_' + p.id); if(el) el.style.display = 'block'; }); }, 100);
 }
 
-function updateFavCount() {
-  let cnt = 0;
-  persons.forEach(p => {
-    if(p.favorite) cnt++;
-    (p.deals||[]).forEach(d => {
-      if(d.favorite) cnt++;
-    });
-  });
-  const el = document.getElementById('cnt-fav');
-  if(el) el.textContent = cnt;
-}
+function updateFavCount() { let cnt = 0; persons.forEach(p => { if(p.favorite) cnt++; (p.deals||[]).forEach(d => { if(d.favorite) cnt++; }); }); const el = document.getElementById('cnt-fav'); if(el) el.textContent = cnt; }
+
 function showFavoritesFilter(type, btn) {
-  // تحديث الأزرار النشطة
-  document.querySelectorAll('.sidebar-menu .btn-ghost').forEach(b => b.classList.remove('active'));
-  if(btn) btn.classList.add('active');
-  
+  document.querySelectorAll('.sidebar-menu .btn-ghost').forEach(b => b.classList.remove('active')); if(btn) btn.classList.add('active');
   let filtered = [];
-  
-  persons.forEach(p => {
-    if(type === 'persons') {
-      if(p.favorite && (p.deals||[]).length > 0) {
-        filtered.push({...p, deals: p.deals});
-      }
-    } else if(type === 'deals') {
-      const favDeals = (p.deals||[]).filter(d => d.favorite);
-      if(favDeals.length > 0) {
-        filtered.push({...p, deals: favDeals});
-      }
-    } else {
-      if(p.favorite && (p.deals||[]).length > 0) {
-        filtered.push({...p, deals: p.deals});
-      } else {
-        const favDeals = (p.deals||[]).filter(d => d.favorite);
-        if(favDeals.length > 0) {
-          filtered.push({...p, deals: favDeals});
-        }
-      }
-    }
-  });
-  
-  if(filtered.length === 0) {
-    showToast('لا توجد عناصر', 'info');
-    return;
-  }
-  
-  document.getElementById('personsList').innerHTML = 
-    '<div style="text-align:center;margin-bottom:16px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap">' +
-    '<button class="btn btn-ghost btn-sm" onclick="render()"><i class="fa-solid fa-house" style="margin-left:4px"></i>الرئيسية</button>' +
-    '<button class="btn btn-ghost btn-sm' + (type==='all'?' active':'') + '" onclick="showFavoritesFilter(\'all\', this)"><i class="fa-solid fa-layer-group" style="margin-left:4px"></i>عرض الكل</button>' +
-    '<button class="btn btn-ghost btn-sm' + (type==='persons'?' active':'') + '" onclick="showFavoritesFilter(\'persons\', this)"><i class="fa-solid fa-user" style="margin-left:4px"></i>الأشخاص</button>' +
-    '<button class="btn btn-ghost btn-sm' + (type==='deals'?' active':'') + '" onclick="showFavoritesFilter(\'deals\', this)"><i class="fa-solid fa-file-contract" style="margin-left:4px"></i>الصفقات</button>' +
-    '</div>' +
-    filtered.map(p => renderPersonBlock(p, persons.indexOf(p))).join('');
-  
-  document.getElementById('emptyState').style.display = 'none';
-  document.getElementById('noResults').style.display = 'none';
-  
-  setTimeout(() => {
-    filtered.forEach(p => {
-      const el = document.getElementById('content_' + p.id);
-      if(el) el.style.display = 'block';
-    });
-  }, 100);
+  persons.forEach(p => { if(type === 'persons') { if(p.favorite && (p.deals||[]).length > 0) { filtered.push({...p, deals: p.deals}); } } else if(type === 'deals') { const favDeals = (p.deals||[]).filter(d => d.favorite); if(favDeals.length > 0) { filtered.push({...p, deals: favDeals}); } } else { if(p.favorite && (p.deals||[]).length > 0) { filtered.push({...p, deals: p.deals}); } else { const favDeals = (p.deals||[]).filter(d => d.favorite); if(favDeals.length > 0) { filtered.push({...p, deals: favDeals}); } } } });
+  if(filtered.length === 0) { showToast('لا توجد عناصر', 'info'); return; }
+  document.getElementById('personsList').innerHTML = '<div style="text-align:center;margin-bottom:16px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap">' + '<button class="btn btn-ghost btn-sm" onclick="render()"><i class="fa-solid fa-house" style="margin-left:4px"></i>الرئيسية</button>' + '<button class="btn btn-ghost btn-sm' + (type==='all'?' active':'') + '" onclick="showFavoritesFilter(\'all\', this)"><i class="fa-solid fa-layer-group" style="margin-left:4px"></i>عرض الكل</button>' + '<button class="btn btn-ghost btn-sm' + (type==='persons'?' active':'') + '" onclick="showFavoritesFilter(\'persons\', this)"><i class="fa-solid fa-user" style="margin-left:4px"></i>الأشخاص</button>' + '<button class="btn btn-ghost btn-sm' + (type==='deals'?' active':'') + '" onclick="showFavoritesFilter(\'deals\', this)"><i class="fa-solid fa-file-contract" style="margin-left:4px"></i>الصفقات</button>' + '</div>' + filtered.map(p => renderPersonBlock(p, persons.indexOf(p))).join('');
+  document.getElementById('emptyState').style.display = 'none'; document.getElementById('noResults').style.display = 'none';
+  setTimeout(() => { filtered.forEach(p => { const el = document.getElementById('content_' + p.id); if(el) el.style.display = 'block'; }); }, 100);
 }
-// ========== النسخ // ========== النسخ الاحتياطي ==========
-function createBackup() {
-  if(!persons || persons.length === 0) {
-    showToast('لا توجد بيانات للنسخ', 'error');
-    return;
-  }
-  
-  const backup = {
-    date: new Date().toISOString(),
-    data: JSON.parse(JSON.stringify(persons))
-  };
-  
-  const dataStr = JSON.stringify(backup, null, 2);
-  const blob = new Blob([dataStr], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  
-  const d = new Date();
-  const dateStr = d.toLocaleDateString('ar-SA').replace(/\//g, '-');
-  const timeStr = d.toLocaleTimeString('ar-SA', {hour:'2-digit',minute:'2-digit'}).replace(/:/g, '-');
-  a.download = `backup-${dateStr}-${timeStr}.json`;
-  
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-  
-  showToast('<i class="fa-solid fa-cloud-arrow-up"></i> تم تنزيل النسخة الاحتياطية', 'success');
-}
+
 // ========== عرض أولي ==========
 render();
 
-function toggleDarkMode() {
-  const isDark = document.body.classList.toggle('dark-mode');
-  document.getElementById('darkModeLabel').textContent = isDark ? 'الوضع الفاتح' : 'الوضع الليلي';
-  const iconEl = document.getElementById('btnDarkMode').querySelector('.item-icon');
-  if(iconEl) {
-    iconEl.innerHTML = isDark ? '<i class="fa-solid fa-sun"></i>' : '<i class="fa-solid fa-moon"></i>';
-  }
-  const quickBtn = document.getElementById('quickDark');
-  if(quickBtn) {
-    quickBtn.innerHTML = isDark ? '<i class="fa-solid fa-sun"></i>' : '<i class="fa-solid fa-moon"></i>';
-  }
-  localStorage.setItem('darkMode', isDark);
-}
-// عرض البيانات
+function toggleDarkMode() { const isDark = document.body.classList.toggle('dark-mode'); document.getElementById('darkModeLabel').textContent = isDark ? 'الوضع الفاتح' : 'الوضع الليلي'; const iconEl = document.getElementById('btnDarkMode').querySelector('.item-icon'); if(iconEl) { iconEl.innerHTML = isDark ? '<i class="fa-solid fa-sun"></i>' : '<i class="fa-solid fa-moon"></i>'; } const quickBtn = document.getElementById('quickDark'); if(quickBtn) { quickBtn.innerHTML = isDark ? '<i class="fa-solid fa-sun"></i>' : '<i class="fa-solid fa-moon"></i>'; } localStorage.setItem('darkMode', isDark); }
 
-// 
+// ========== تنبيه الأقساط ==========
 let alertTimer = null;
+function showAlert(title, body) { const overlay = document.getElementById('alertOverlay'); const bar = document.getElementById('alertBar'); const line = document.getElementById('alertLine'); const titleEl = document.getElementById('alertTitle'); const bodyEl = document.getElementById('alertBody'); if(!overlay || !bar) return; titleEl.textContent = title || 'تنبيه أقساط'; bodyEl.innerHTML = body || ''; line.style.transition = 'none'; line.style.width = '0%'; setTimeout(() => { line.style.transition = 'width 5s linear'; line.style.width = '100%'; }, 50); overlay.classList.add('show'); bar.classList.add('show'); clearTimeout(alertTimer); alertTimer = setTimeout(closeAlert, 5000); }
+function closeAlert() { clearTimeout(alertTimer); const bar = document.getElementById('alertBar'); const overlay = document.getElementById('alertOverlay'); if(bar) bar.classList.remove('show'); if(overlay) overlay.classList.remove('show'); }
 
-function showAlert(title, body) {
-  const overlay = document.getElementById('alertOverlay');
-  const bar = document.getElementById('alertBar');
-  const line = document.getElementById('alertLine');
-  const titleEl = document.getElementById('alertTitle');
-  const bodyEl = document.getElementById('alertBody');
-  
-  if(!overlay || !bar) return;
-  
-  titleEl.textContent = title || 'تنبيه أقساط';
-  bodyEl.innerHTML = body || '';
-  
-  line.style.transition = 'none';
-  line.style.width = '0%';
-  setTimeout(() => {
-    line.style.transition = 'width 5s linear';
-    line.style.width = '100%';
-  }, 50);
-  
-  overlay.classList.add('show');
-  bar.classList.add('show');
-  
-  clearTimeout(alertTimer);
-  alertTimer = setTimeout(closeAlert, 5000);
-  
-  // سحب بالإصبع للإغلاق
-  let startY = 0;
-  let startX = 0;
-  
-  bar.addEventListener('touchstart', function(e) {
-    startY = e.touches[0].clientY;
-    startX = e.touches[0].clientX;
-  }, {passive: true});
-  
-  bar.addEventListener('touchmove', function(e) {
-    const deltaY = startY - e.touches[0].clientY;
-    const deltaX = Math.abs(startX - e.touches[0].clientX);
-    if(deltaY > 30 && deltaY > deltaX) {
-      closeAlert();
-    }
-  }, {passive: true});
-}
+setTimeout(() => { if(!persons || persons.length === 0) return; const today = new Date(); today.setHours(0,0,0,0); let alerts = []; persons.forEach(p => { (p.deals||[]).forEach(d => { if(isDone(d) || !d.dateTo) return; const daysLeft = Math.floor((new Date(d.dateTo) - today) / 86400000); if(daysLeft <= 3 && daysLeft >= 1) { const rem = fmtMoney(dTotal(d) - dPaid(d)); alerts.push(`<b>${d.deviceName || 'جهاز'}</b> · ${p.name}<br>⏳ باقي ${daysLeft} أيام · المتبقي: ${rem}`); } }); }); if(alerts.length > 0) { showAlert('تذكير بالأقساط', alerts.join('<br><br>')); } }, 2000);
 
-function closeAlert() {
-  clearTimeout(alertTimer);
-  const bar = document.getElementById('alertBar');
-  const overlay = document.getElementById('alertOverlay');
-  if(bar) bar.classList.remove('show');
-  if(overlay) overlay.classList.remove('show');
-}
-
-// فحص الأقساط
-setTimeout(() => {
-  if(!persons || persons.length === 0) return;
-  const today = new Date();
-  today.setHours(0,0,0,0);
-  
-  let alerts = [];
-  persons.forEach(p => {
-    (p.deals||[]).forEach(d => {
-      if(isDone(d) || !d.dateTo) return;
-      const daysLeft = Math.floor((new Date(d.dateTo) - today) / 86400000);
-      if(daysLeft <= 3 && daysLeft >= 1) {
-        const rem = fmtMoney(dTotal(d) - dPaid(d));
-        alerts.push(`<b>${d.deviceName || 'جهاز'}</b> · ${p.name}<br>⏳ باقي ${daysLeft} أيام · المتبقي: ${rem}`);
-      }
-    });
-  });
-  
-  if(alerts.length > 0) {
-    showAlert('تذكير بالأقساط', alerts.join('<br><br>'));
-  }
-}, 2000);
-
-function shareWhatsApp(phone, name, device, remaining) {
-  if(!phone) {
-    showToast('الرجاء إضافة رقم العميل أولاً', 'error');
-    return;
-  }
-  const msg = `مرحباً ${name}،\n\nباقي على قسط جهاز ${device} مبلغ ${remaining}.\n\nيرجى الدفع في أقرب وقت ممكن. شكراً لك.`;
-  const url = `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
-  window.open(url, '_blank');
-}
+function shareWhatsApp(phone, name, device, remaining) { if(!phone) { showToast('الرجاء إضافة رقم العميل أولاً', 'error'); return; } const msg = `مرحباً ${name}،\n\nباقي على قسط جهاز ${device} مبلغ ${remaining}.\n\nيرجى الدفع في أقرب وقت ممكن. شكراً لك.`; const url = `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`; window.open(url, '_blank'); }

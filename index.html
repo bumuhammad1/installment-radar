@@ -406,7 +406,7 @@ window.loginWithGoogle = async function() {
     const result = await signInWithPopup(auth, googleProvider);
     currentUser = result.user; 
     updateUserUI(currentUser);
-    showToast(`مرحباً بك ${currentUser.displayName} ✨`);
+    showToast(`مرحباً بك ${currentUser.displayName}`);
   } catch (error) {
     if(error.code !== 'auth/cancelled-popup-request') showToast('فشل تسجيل الدخول بواسطة جوجل', 'error');
   }
@@ -460,12 +460,37 @@ setTimeout(() => { if(document.getElementById('loadingOverlay').style.display !=
 onAuthStateChanged(auth, async user => {
   if(user) {
     currentUser = user; updateUserUI(user);
-    try { const snap = await getDoc(doc(db, "users_data", user.uid)); persons = (snap.exists() && snap.data().my_list) ? snap.data().my_list : []; } catch(e) { persons = []; }
+    try {
+      const snap = await getDoc(doc(db, "users_data", user.uid));
+      if(snap.exists() && snap.data().my_list) {
+        persons = snap.data().my_list;
+      } else {
+        const local = loadLocalData();
+        if(local && local.length > 0) {
+          persons = local;
+          showToast('📱 تم تحميل البيانات المحلية', 'info', 2000, '<i class="fa-solid fa-database"></i>');
+        } else {
+          persons = [];
+        }
+      }
+    } catch(e) {
+      const local = loadLocalData();
+      if(local && local.length > 0) {
+        persons = local;
+        showToast('📱 البيانات من الجهاز', 'info', 2000, '<i class="fa-solid fa-database"></i>');
+      } else {
+        persons = [];
+      }
+    }
     hideLoading(); document.getElementById('authOverlay').style.display = 'none'; document.getElementById('btnLogout').style.display = 'flex';
     render();
   } else {
-    currentUser = null; persons = []; updateUserUI(null);
+    currentUser = null;
+    const local = loadLocalData();
+    persons = local && local.length > 0 ? local : [];
+    updateUserUI(null);
     hideLoading(); document.getElementById('authOverlay').style.display = 'flex'; document.getElementById('btnLogout').style.display = 'none';
+    render();
   }
 });
 
@@ -484,6 +509,10 @@ window.logout = async function() {
   };
   openModal('modalLogout');
 };
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js');
+}
 </script>
 
 </body>

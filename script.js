@@ -8,6 +8,19 @@ let activeSort= 'newest';
 let ctx       = {};
 let openDetails = new Set();
 
+// ========== تخزين محلي للبيانات ==========
+function saveLocalData() {
+  try {
+    localStorage.setItem('persons_backup', JSON.stringify(persons));
+  } catch(e) {}
+}
+
+function loadLocalData() {
+  try {
+    const data = localStorage.getItem('persons_backup');
+    return data ? JSON.parse(data) : null;
+  } catch(e) { return null; }
+}
 // ========== لوحة الألوان للتمييز البصري ==========
 const PALETTE = ['#1a1a1a','#DC2626','#059669','#1E3A5F','#059669','#D97706','#1a1a1a'];
 
@@ -411,7 +424,7 @@ function renderDealCard(deal, ci, pid, pci) {
 
   const dateFromBadge = deal.dateFrom ? `<span class="date-badge"><i class="fa-solid fa-calendar-days"></i> ${fmtDate(deal.dateFrom)}</span>` : '';
   const dateToBadge = deal.dateTo ? `<span class="date-badge"><i class="fa-solid fa-hourglass-end"></i> ${fmtDate(deal.dateTo)}</span>` : '';
-  const whatsappBtn = deal.phone ? `<button class="btn btn-whatsapp btn-sm" onclick="shareWhatsApp('${deal.phone}','${deal.deviceName || ''}','${deal.deviceName || ''}','${fmtMoney(rem)}')" title="واتساب" style="width:36px;height:36px;border-radius:8px;padding:0;justify-content:center;flex:0;min-width:36px"><i class="fa-brands fa-whatsapp" style="font-size:16px"></i></button>` : '';
+  const whatsappBtn = deal.phone && !done ? `<button class="btn btn-whatsapp btn-sm" onclick="shareWhatsApp('${deal.phone}','${deal.deviceName || ''}','${deal.deviceName || ''}','${fmtMoney(rem)}')" title="واتساب" style="width:36px;height:36px;border-radius:8px;padding:0;justify-content:center;flex:0;min-width:36px"><i class="fa-brands fa-whatsapp" style="font-size:16px"></i></button>` : '';
   const payBtn = done
     ? `<button class="btn btn-sm" style="flex:1;justify-content:center;background:rgba(5,150,105,0.08);border:1px solid rgba(5,150,105,0.2)!important;color:#059669;cursor:default" disabled><i class="fa-solid fa-circle-check" style="margin-left:4px"></i>المبلغ مكتمل</button>`
     : `<button class="btn btn-pay btn-sm" onclick="openAddPayment('${pid}','${uid}')"><i class="fa-solid fa-plus" style="margin-left:4px"></i>دفعة جديدة</button>`;
@@ -506,6 +519,7 @@ function renderPersonBlock(p, ci) {
 }
 
 function render() {
+  saveLocalData();
   const filtered = getFiltered();
   if(window._syncData) window._syncData();
   ['all','late','active','done'].forEach(t=> document.getElementById('cnt-'+t).textContent = fmtNum(countTab(t)));
@@ -548,6 +562,37 @@ function render() {
   } else {
     tabsBar.style.display = 'none'; statsBar.style.display= 'none'; sortBar.style.display = 'none';
   }
+  // ========== تذكير واتساب للصفقات اللي باقي على استحقاقها 3 أيام أو أقل ==========
+setTimeout(() => {
+  persons.forEach(p => {
+    (p.deals||[]).forEach(d => {
+      if (isDone(d) || !d.dateTo || !d.phone) return;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const daysLeft = Math.floor((new Date(d.dateTo) - today) / 86400000);
+      
+      if (daysLeft <= 3 && daysLeft >= 0) {
+        const remAmount = fmtMoney(dTotal(d) - dPaid(d));
+        if (confirm(
+          `🔔 تذكير بواسطة الواتساب\n\n` +
+          `العميل: ${p.name}\n` +
+          `الجهاز: ${d.deviceName || '—'}\n` +
+          `تاريخ الاستحقاق: ${fmtDate(d.dateTo)}\n` +
+          `الأيام المتبقية: ${daysLeft} ${daysLeft === 1 ? 'يوم' : 'أيام'}\n` +
+          `المبلغ المتبقي: ${remAmount}\n\n` +
+          `هل تريد إرسال تذكير واتساب الآن؟`
+        )) {
+          const msg = `السلام عليكم ${p.name}،\n\n` +
+            `نذكركم بقسط جهاز ${d.deviceName || 'الجهاز'}.\n` +
+            `تاريخ الاستحقاق: ${fmtDate(d.dateTo)}\n` +
+            `المبلغ المتبقي: ${remAmount}\n\n` +
+            `يرجى الدفع في أقرب وقت ممكن. شكراً لكم 🤝`;
+          window.open(`https://wa.me/${d.phone}?text=${encodeURIComponent(msg)}`, '_blank');
+        }
+      }
+    });
+  });
+}, 3000);
 
   const list = document.getElementById('personsList');
   const emptyState = document.getElementById('emptyState');
@@ -733,6 +778,24 @@ function toggleDarkMode() { const isDark = document.body.classList.toggle('dark-
 let alertTimer = null;
 function showAlert(title, body) { const overlay = document.getElementById('alertOverlay'); const bar = document.getElementById('alertBar'); const line = document.getElementById('alertLine'); const titleEl = document.getElementById('alertTitle'); const bodyEl = document.getElementById('alertBody'); if(!overlay || !bar) return; titleEl.textContent = title || 'تنبيه أقساط'; bodyEl.innerHTML = body || ''; line.style.transition = 'none'; line.style.width = '0%'; setTimeout(() => { line.style.transition = 'width 5s linear'; line.style.width = '100%'; }, 50); overlay.classList.add('show'); bar.classList.add('show'); clearTimeout(alertTimer); alertTimer = setTimeout(closeAlert, 5000); }
 function closeAlert() { clearTimeout(alertTimer); const bar = document.getElementById('alertBar'); const overlay = document.getElementById('alertOverlay'); if(bar) bar.classList.remove('show'); if(overlay) overlay.classList.remove('show'); }
+// ========== Offline / Online Support ==========
+window.addEventListener('online', () => {
+  if (window._syncData) window._syncData();
+  showToast('🌐 تم الاتصال بالإنترنت - جاري المزامنة', 'success', 2000, '<i class="fa-solid fa-cloud-arrow-up"></i>');
+});
+
+window.addEventListener('offline', () => {
+  showToast('⚠️ أنت الآن بدون اتصال - التعديلات ستحفظ محلياً', 'error', 3000, '<i class="fa-solid fa-cloud-bolt"></i>');
+});
+
+// استقبال رسالة المزامنة من Service Worker
+if (navigator.serviceWorker) {
+  navigator.serviceWorker.addEventListener('message', event => {
+    if (event.data && event.data.type === 'SYNC_DATA' && window._syncData) {
+      window._syncData();
+    }
+  });
+}
 
 setTimeout(() => { if(!persons || persons.length === 0) return; const today = new Date(); today.setHours(0,0,0,0); let alerts = []; persons.forEach(p => { (p.deals||[]).forEach(d => { if(isDone(d) || !d.dateTo) return; const daysLeft = Math.floor((new Date(d.dateTo) - today) / 86400000); if(daysLeft <= 3 && daysLeft >= 1) { const rem = fmtMoney(dTotal(d) - dPaid(d)); alerts.push(`<b>${d.deviceName || 'جهاز'}</b> · ${p.name}<br>⏳ باقي ${daysLeft} أيام · المتبقي: ${rem}`); } }); }); if(alerts.length > 0) { showAlert('تذكير بالأقساط', alerts.join('<br><br>')); } }, 2000);
 
